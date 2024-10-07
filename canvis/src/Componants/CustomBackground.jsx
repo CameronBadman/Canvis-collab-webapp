@@ -3,114 +3,148 @@ import * as THREE from 'three';
 
 const CustomBackground = () => {
   const mountRef = useRef(null);
+  const sceneRef = useRef(null);
+  const rendererRef = useRef(null);
+  const linesRef = useRef([]);
+  const animationFrameRef = useRef(null);
 
   useEffect(() => {
+    if (!mountRef.current) return;
+
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf0f0f0); // Light gray background
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+    sceneRef.current = scene;
+    rendererRef.current = renderer;
 
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
 
-    const createMountainStroke = () => {
-      const points = [];
-      const segments = Math.floor(Math.random() * 20) + 15;
-      const startX = Math.random() * 60 - 30; // Increased range to ensure coverage of left side
-      const startY = Math.random() * 40 - 20; // Increased vertical range
+    scene.background = new THREE.Color(0xffffff); // White background
+    camera.position.z = 1000;
 
-      for (let i = 0; i <= segments; i++) {
-        const x = startX + (i / segments) * 60; // Increased width to 60
-        const y = startY + Math.sin(i / segments * Math.PI * 2) * (Math.random() * 6 + 3); // More pronounced curves
-        points.push(new THREE.Vector3(x, y, 0));
+    const createLine = () => {
+      const points = [];
+      const length = Math.random() * 600 + 400; // Longer lines for more horizontal coverage
+      const segments = 6; // More segments for deeper curves
+      const startPoint = new THREE.Vector3(
+        Math.random() * window.innerWidth - window.innerWidth / 2,
+        Math.random() * window.innerHeight - window.innerHeight / 2,
+        0
+      );
+      
+      points.push(startPoint);
+      let prevPoint = startPoint;
+      for (let i = 1; i < segments; i++) {
+        const t = i / (segments - 1);
+        const newPoint = new THREE.Vector3(
+          prevPoint.x + (length / (segments - 1)) + (Math.random() - 0.5) * 50,
+          prevPoint.y + (Math.random() - 0.5) * 100,
+          0
+        );
+        points.push(newPoint);
+        prevPoint = newPoint;
       }
 
       const curve = new THREE.CatmullRomCurve3(points);
-      const geometry = new THREE.BufferGeometry().setFromPoints(curve.getPoints(100));
-      
+      const finalPoints = curve.getPoints(200);
+
+      const geometry = new THREE.BufferGeometry().setFromPoints(finalPoints);
       const material = new THREE.LineBasicMaterial({
-        color: new THREE.Color(Math.random() * 0.1 + 0.1, Math.random() * 0.1 + 0.1, Math.random() * 0.1 + 0.2),
-        opacity: Math.random() * 0.5 + 0.5,
-        transparent: true,
-        linewidth: Math.random() * 2 + 1,
+        color: 0x000000,
+        linewidth: 1.5,
+        opacity: 0.8,
+        transparent: true
       });
 
       const line = new THREE.Line(geometry, material);
-      line.userData.totalLength = line.geometry.attributes.position.count;
-      line.userData.currentLength = 0;
+      line.userData.points = finalPoints;
+      line.userData.currentPoint = 0;
+      line.userData.drawSpeed = Math.random() * 1 + 2;
+      line.userData.velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.2,
+        (Math.random() - 0.5) * 0.05,
+        0
+      );
       return line;
     };
 
-    const mountainStrokes = [];
-    const totalStrokes = 60; // Increased number of strokes for better coverage
-    for (let i = 0; i < totalStrokes; i++) {
-      const stroke = createMountainStroke();
-      stroke.visible = false;
-      mountainStrokes.push(stroke);
-      scene.add(stroke);
-    }
+    const totalLines = 30;
+    let currentLineIndex = 0;
+    let lastLineAddTime = 0;
 
-    camera.position.z = 40; // Moved camera further back to show more of the scene
-    camera.position.x = 0; // Centering the camera horizontally
+    const animate = (time) => {
+      animationFrameRef.current = requestAnimationFrame(animate);
 
-    let currentStrokeIndex = 0;
-    const drawingSpeed = 1;
-
-    const animate = () => {
-      requestAnimationFrame(animate);
-
-      if (currentStrokeIndex < mountainStrokes.length) {
-        const currentStroke = mountainStrokes[currentStrokeIndex];
-        if (!currentStroke.visible) {
-          currentStroke.visible = true;
+      if (currentLineIndex < totalLines) {
+        const timeSinceLastLine = time - lastLineAddTime;
+        const threshold = Math.max(500, Math.min(2000, currentLineIndex * 50));
+        
+        if (timeSinceLastLine > threshold) {
+          const line = createLine();
+          linesRef.current.push(line);
+          scene.add(line);
+          currentLineIndex++;
+          lastLineAddTime = time;
         }
-
-        currentStroke.userData.currentLength += drawingSpeed;
-        const count = Math.min(Math.floor(currentStroke.userData.currentLength), currentStroke.userData.totalLength);
-
-        currentStroke.geometry.setDrawRange(0, count);
-
-        if (count >= currentStroke.userData.totalLength) {
-          currentStrokeIndex++;
-        }
-      } else {
-        // Continue drawing new strokes
-        const newStroke = createMountainStroke();
-        mountainStrokes.push(newStroke);
-        scene.add(newStroke);
-
-        // Remove oldest stroke if we have too many
-        if (mountainStrokes.length > totalStrokes * 1.5) {
-          const oldestStroke = mountainStrokes.shift();
-          scene.remove(oldestStroke);
-        }
-
-        currentStrokeIndex = mountainStrokes.length - 1;
       }
 
-      // Slight movement of all visible strokes
-      mountainStrokes.forEach(stroke => {
-        if (stroke.visible) {
-          stroke.position.y += (Math.random() - 0.5) * 0.02;
+      linesRef.current.forEach((line, index) => {
+        if (line.userData.currentPoint < line.userData.points.length) {
+          line.geometry.setDrawRange(0, line.userData.currentPoint);
+          line.userData.currentPoint += line.userData.drawSpeed;
+        }
+
+        line.position.add(line.userData.velocity);
+
+        const boundingBox = new THREE.Box3().setFromObject(line);
+        if (boundingBox.max.x < -window.innerWidth / 2 || boundingBox.min.x > window.innerWidth / 2 ||
+            boundingBox.max.y < -window.innerHeight / 2 || boundingBox.min.y > window.innerHeight / 2) {
+          scene.remove(line);
+          linesRef.current.splice(index, 1);
+          currentLineIndex--;
         }
       });
 
       renderer.render(scene, camera);
     };
 
-    animate();
+    animate(0);
 
     const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      if (rendererRef.current) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        rendererRef.current.setSize(window.innerWidth, window.innerHeight);
+      }
     };
 
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      mountRef.current.removeChild(renderer.domElement);
+      
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+      }
+
+      if (sceneRef.current) {
+        sceneRef.current.clear();
+      }
+
+      linesRef.current.forEach(line => {
+        line.geometry.dispose();
+        line.material.dispose();
+      });
+
+      if (mountRef.current && rendererRef.current) {
+        mountRef.current.removeChild(rendererRef.current.domElement);
+      }
     };
   }, []);
 
