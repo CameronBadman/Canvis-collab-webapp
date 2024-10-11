@@ -1,19 +1,33 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import CustomBackground from '../Componants/CustomBackground';
-import { UserCircle } from 'lucide-react';
+import { UserCircle, Loader } from 'lucide-react';
+import { authService } from '../services/AuthService';
 
 const LoginPage = ({ isLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login or register logic here
-    console.log(isLogin ? 'Logging in' : 'Registering', email, password);
-    // After successful login/register, navigate to home
-    navigate('/');
+    setError('');
+    setIsLoading(true);
+    try {
+      if (isLogin) {
+        await authService.login(email, password);
+      } else {
+        await authService.register(email, password);
+      }
+      navigate('/account');  // Changed from '/' to '/account'
+    } catch (err) {
+      console.error('Auth error:', err);
+      setError(err.error || err.message || 'An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -35,6 +49,7 @@ const LoginPage = ({ isLogin }) => {
         <h1 className="text-4xl font-bold mb-8 text-center text-gray-800">
           {isLogin ? 'Login' : 'Register'}
         </h1>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
         <form onSubmit={handleSubmit} className="w-full max-w-md px-4">
           <input
             type="email"
@@ -42,6 +57,7 @@ const LoginPage = ({ isLogin }) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
             className="w-full px-6 py-4 text-xl border-2 border-gray-400 rounded-lg bg-white bg-opacity-70 focus:outline-none focus:ring-2 focus:ring-gray-500 mb-6 text-gray-800 placeholder-gray-400"
+            disabled={isLoading}
           />
           <input
             type="password"
@@ -49,12 +65,21 @@ const LoginPage = ({ isLogin }) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             className="w-full px-6 py-4 text-xl border-2 border-gray-400 rounded-lg bg-white bg-opacity-70 focus:outline-none focus:ring-2 focus:ring-gray-500 mb-6 text-gray-800 placeholder-gray-400"
+            disabled={isLoading}
           />
           <button
             type="submit"
-            className="w-full bg-gray-800 text-white py-4 px-6 text-xl rounded-lg border border-transparent hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-300"
+            className="w-full bg-gray-800 text-white py-4 px-6 text-xl rounded-lg border border-transparent hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-300 flex items-center justify-center"
+            disabled={isLoading}
           >
-            {isLogin ? 'Login' : 'Register'}
+            {isLoading ? (
+              <>
+                <Loader className="animate-spin mr-2" size={24} />
+                {isLogin ? 'Logging in...' : 'Registering...'}
+              </>
+            ) : (
+              isLogin ? 'Login' : 'Register'
+            )}
           </button>
         </form>
         <p className="mt-4 text-gray-600">

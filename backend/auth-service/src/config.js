@@ -30,8 +30,13 @@ exports.initializeRedis = async () => {
 
   redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
-  await redisClient.connect();
-  console.log('Redis connected successfully');
+  try {
+    await redisClient.connect();
+    console.log('Redis connected successfully');
+  } catch (error) {
+    console.error('Failed to connect to Redis:', error);
+    process.exit(1);
+  }
 
   return redisClient;
 };

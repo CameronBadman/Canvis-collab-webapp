@@ -1,17 +1,11 @@
-version: '3.8'
+version: '3.9'
 
 services:
   api-gateway:
     build:
-      context: .
+      context: ./backend/api-gateway
       dockerfile: Dockerfile
-    deploy:
-      replicas: 2
-      update_config:
-        parallelism: 1
-        delay: 10s
-      restart_policy:
-        condition: on-failure
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -23,34 +17,17 @@ services:
 
   auth-service:
     build: 
-      context: ./auth-service
+      context: ./backend/auth-service
       dockerfile: Dockerfile
-    deploy:
-      replicas: 3
-      update_config:
-        parallelism: 1
-        delay: 10s
-      restart_policy:
-        condition: on-failure
-    env_file:
-      - .env
+    restart: unless-stopped
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
       - REDIS_HOST=redis
-      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - FIREBASE_SERVICE_ACCOUNT=${FIREBASE_SERVICE_ACCOUNT}
       - JWT_SECRET=${JWT_SECRET}
-      - FIREBASE_API_KEY=${FIREBASE_API_KEY}
-      - FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}
-      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
-      - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
-      - FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID}
-      - FIREBASE_APP_ID=${FIREBASE_APP_ID}
-      - FIREBASE_MEASUREMENT_ID=${FIREBASE_MEASUREMENT_ID}
-    expose:
-      - "3000"
+      - FIREBASE_SERVICE_ACCOUNT=${FIREBASE_SERVICE_ACCOUNT}
     depends_on:
       - redis
     networks:
@@ -59,15 +36,30 @@ services:
   redis:
     image: redis:alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     networks:
       - app-network
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_AUTH_URL=${VITE_AUTH_URL}
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+      - auth-service
+    networks:
+      - app-network
+
   load-balancer:
-    image: nginx:latest
+    image: nginx:alpine
     ports:
       - "80:80"
     volumes:
@@ -75,6 +67,7 @@ services:
     depends_on:
       - api-gateway
       - auth-service
+      - frontend
     networks:
       - app-network
 

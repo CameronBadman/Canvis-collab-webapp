@@ -14,9 +14,15 @@ import (
 func main() {
 	router := gin.Default()
 
-	// Enable CORS
+	// Configure CORS
 	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
+	config.AllowOrigins = []string{"http://localhost", "http://localhost:3000"} // Add your frontend URLs
+	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	config.AllowCredentials = true
+	config.ExposeHeaders = []string{"Content-Length"}
+	config.MaxAge = 12 * 60 * 60 // 12 hours
+
 	router.Use(cors.New(config))
 
 	// Middleware for logging
@@ -35,9 +41,19 @@ func main() {
 	}
 	authProxy := httputil.NewSingleHostReverseProxy(authServiceURL)
 
+	// Add custom director to modify the request
+	authProxy.Director = func(req *http.Request) {
+		originalPath := req.URL.Path
+		req.URL.Scheme = authServiceURL.Scheme
+		req.URL.Host = authServiceURL.Host
+		req.URL.Path = authServiceURL.Path + req.URL.Path
+		log.Printf("Proxying request to Auth Service: %s %s (original path: %s)", req.Method, req.URL.Path, originalPath)
+	}
+
 	auth := router.Group("/auth")
 	{
 		auth.Any("/*path", func(c *gin.Context) {
+			log.Printf("Received auth request: %s %s", c.Request.Method, c.Request.URL.Path)
 			authProxy.ServeHTTP(c.Writer, c.Request)
 		})
 	}
@@ -48,8 +64,12 @@ func main() {
 		port = "8080"
 	}
 
+	log.Printf("API Gateway starting on port %s", port)
+
 	// Start server
-	router.Run(":" + port)
+	if err := router.Run(":" + port); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }
 
 func healthCheck(c *gin.Context) {
