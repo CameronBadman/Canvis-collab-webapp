@@ -33,6 +33,23 @@ services:
     networks:
       - app-network
 
+  canvas-backend:
+    build:
+      context: ./backend/canvas-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - PORT=8081
+      - MONGODB_URI=mongodb://mongodb:27017/canvas_app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - app-network
+
   redis:
     image: redis:alpine
     ports:
@@ -40,6 +57,15 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    networks:
+      - app-network
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
     networks:
       - app-network
 
@@ -55,6 +81,7 @@ services:
     depends_on:
       - api-gateway
       - auth-service
+      - canvas-backend
     networks:
       - app-network
 
@@ -68,6 +95,7 @@ services:
       - api-gateway
       - auth-service
       - frontend
+      - canvas-backend
     networks:
       - app-network
 
@@ -77,3 +105,4 @@ networks:
 
 volumes:
   redis_data:
+  mongodb_data:
