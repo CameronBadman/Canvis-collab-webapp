@@ -1,22 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import CustomBackground from '../Componants/CustomBackground';
+import { canvasService } from '../services/CanvasService';
 
 const AccountPage = () => {
   const [canvases, setCanvases] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showNewCanvasCard, setShowNewCanvasCard] = useState(false);
+  const [newCanvasName, setNewCanvasName] = useState('');
+  const newCanvasInputRef = useRef(null);
 
   useEffect(() => {
-    // Fetch user's canvases
-    // This is a placeholder. Replace with actual API call.
-    setCanvases([
-      { id: 1, title: 'My First Canvas', lastEdited: '2023-05-15' },
-      { id: 2, title: 'Project Ideas', lastEdited: '2023-05-20' },
-      { id: 3, title: 'Weekly Planner', lastEdited: '2023-05-22' },
-      { id: 4, title: 'Business Model', lastEdited: '2023-05-25' },
-      { id: 5, title: 'Vacation Plans', lastEdited: '2023-05-28' },
-    ]);
+    fetchCanvases();
   }, []);
+
+  useEffect(() => {
+    if (showNewCanvasCard && newCanvasInputRef.current) {
+      newCanvasInputRef.current.focus();
+    }
+  }, [showNewCanvasCard]);
+
+  const fetchCanvases = async () => {
+    try {
+      setIsLoading(true);
+      const fetchedCanvases = await canvasService.getUserCanvases();
+      setCanvases(fetchedCanvases);
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error fetching canvases:', err);
+      setError('Failed to load canvases. Please try again later.');
+      setIsLoading(false);
+    }
+  };
 
   const nextCanvas = () => {
     setCurrentIndex((prevIndex) => 
@@ -30,15 +47,72 @@ const AccountPage = () => {
     );
   };
 
+  const handleCreateCanvas = async () => {
+    setShowNewCanvasCard(true);
+  };
+
+  const handleCloseNewCanvasCard = () => {
+    setShowNewCanvasCard(false);
+    setNewCanvasName('');
+  };
+
+  const handleSubmitNewCanvas = async () => {
+    if (newCanvasName.trim()) {
+      try {
+        const newCanvas = await canvasService.createCanvas(newCanvasName);
+        setCanvases([...canvases, newCanvas]);
+        handleCloseNewCanvasCard();
+      } catch (err) {
+        console.error('Error creating canvas:', err);
+        alert('Failed to create a new canvas. Please try again.');
+      }
+    }
+  };
+
   const CanvasCard = ({ canvas }) => (
     <div
       key={canvas.id}
       className="bg-white bg-opacity-80 rounded-lg shadow-lg p-6 w-full h-full flex flex-col justify-center items-center transition-all duration-300 ease-in-out hover:bg-opacity-100 hover:shadow-xl cursor-pointer"
     >
-      <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">{canvas.title}</h2>
-      <p className="text-sm text-gray-600">Last edited: {canvas.lastEdited}</p>
+      <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">{canvas.name}</h2>
+      <p className="text-sm text-gray-600">Last edited: {new Date(canvas.updated_at).toLocaleDateString()}</p>
     </div>
   );
+
+  const NewCanvasCard = () => (
+    <div className={`fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-300 ${showNewCanvasCard ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className={`bg-white rounded-lg shadow-lg p-6 w-96 transform transition-all duration-300 ${showNewCanvasCard ? 'scale-100' : 'scale-95'}`}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-800">Create New Canvas</h2>
+          <button onClick={handleCloseNewCanvasCard} className="text-gray-600 hover:text-gray-800">
+            <X size={24} />
+          </button>
+        </div>
+        <input
+          ref={newCanvasInputRef}
+          type="text"
+          value={newCanvasName}
+          onChange={(e) => setNewCanvasName(e.target.value)}
+          placeholder="Enter canvas name"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 mb-4"
+        />
+        <button
+          onClick={handleSubmitNewCanvas}
+          className="w-full bg-gray-800 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition duration-300"
+        >
+          Create Canvas
+        </button>
+      </div>
+    </div>
+  );
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
@@ -61,7 +135,7 @@ const AccountPage = () => {
               className="flex w-full h-full transition-transform duration-300 ease-in-out" 
               style={{ transform: `translateX(-${(currentIndex / 3) * 100}%)` }}
             >
-              {canvases.map((canvas, index) => (
+              {canvases.map((canvas) => (
                 <div key={canvas.id} className="w-1/3 h-full flex-shrink-0 p-2">
                   <CanvasCard canvas={canvas} />
                 </div>
@@ -78,11 +152,16 @@ const AccountPage = () => {
           </button>
         </div>
         
-        <button className="mt-4 bg-gray-800 text-white py-2 px-4 rounded-full hover:bg-gray-700 transition duration-300 flex items-center text-lg">
+        <button 
+          onClick={handleCreateCanvas}
+          className="mt-4 bg-gray-800 text-white py-2 px-4 rounded-full hover:bg-gray-700 transition duration-300 flex items-center text-lg"
+        >
           <Plus size={20} className="mr-2" />
           Create New Canvas
         </button>
       </div>
+
+      <NewCanvasCard />
     </div>
   );
 };

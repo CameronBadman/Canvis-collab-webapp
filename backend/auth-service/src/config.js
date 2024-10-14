@@ -1,10 +1,11 @@
 const admin = require('firebase-admin');
-const redis = require('redis');
+const Redis = require('ioredis');
 const jwt = require('jsonwebtoken');
 
 let redisClient;
 
 exports.initializeFirebase = () => {
+  console.log('Initializing Firebase...');
   try {
     const firebaseConfig = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     
@@ -23,15 +24,17 @@ exports.initializeFirebase = () => {
 };
 
 exports.initializeRedis = async () => {
-  redisClient = redis.createClient({
-    url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+  console.log('Connecting to Redis...');
+  redisClient = new Redis({
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
     password: process.env.REDIS_PASSWORD
   });
 
-  redisClient.on('error', (err) => console.log('Redis Client Error', err));
+  redisClient.on('error', (err) => console.error('Redis Client Error:', err));
 
   try {
-    await redisClient.connect();
+    await redisClient.ping();
     console.log('Redis connected successfully');
   } catch (error) {
     console.error('Failed to connect to Redis:', error);
@@ -44,5 +47,6 @@ exports.initializeRedis = async () => {
 exports.getRedisClient = () => redisClient;
 
 exports.generateToken = (uid) => {
+  console.log(`Generating token for UID: ${uid}`);
   return jwt.sign({ uid }, process.env.JWT_SECRET, { expiresIn: '1h' });
-};
+}; 

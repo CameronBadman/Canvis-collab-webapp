@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import CustomBackground from '../Componants/CustomBackground';
 import { UserCircle, LogOut } from 'lucide-react';
 import { authService } from '../services/AuthService';
@@ -44,6 +45,25 @@ const HomePage = () => {
     navigate('/');
   };
 
+  const handleAccountClick = async () => {
+    if (currentUser && currentUser.token) {
+      try {
+        // Verify token with the backend
+        await axios.get('/api/auth/verify', {
+          headers: { Authorization: `Bearer ${currentUser.token}` }
+        });
+        navigate('/account');
+      } catch (error) {
+        console.error('Token verification failed:', error);
+        // Token rejected, logout and redirect to homepage
+        await handleLogout();
+      }
+    } else {
+      // Not logged in, redirect to homepage
+      navigate('/');
+    }
+  };
+
   return (
     <div className="relative w-full h-screen overflow-hidden">
       <CustomBackground />
@@ -58,6 +78,12 @@ const HomePage = () => {
                 <div className="block px-6 py-3 text-base font-bold text-gray-900 border-b border-gray-200">
                   {currentUser.email}
                 </div>
+                <button 
+                  onClick={handleAccountClick}
+                  className="flex items-center w-full px-6 py-3 text-base text-gray-700 hover:bg-gray-100"
+                >
+                  Account
+                </button>
                 <button 
                   onClick={handleLogout}
                   className="flex items-center w-full px-6 py-3 text-base text-gray-700 hover:bg-gray-100"

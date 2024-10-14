@@ -1,51 +1,22 @@
-version: '3.9'
-
 services:
-  api-gateway:
-    build:
-      context: ./backend/api-gateway
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - PORT=8080
-    expose:
-      - "8080"
-    networks:
-      - app-network
-
   auth-service:
     build: 
       context: ./backend/auth-service
       dockerfile: Dockerfile
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=3000
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - FIREBASE_SERVICE_ACCOUNT=${FIREBASE_SERVICE_ACCOUNT}
+    ports:
+      - "3000:3000"
     depends_on:
-      - redis
-    networks:
-      - app-network
-
-  canvas-backend:
-    build:
-      context: ./backend/canvas-backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    environment:
-      - PORT=8081
-      - MONGODB_URI=mongodb://mongodb:27017/canvas_app
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-    depends_on:
-      - mongodb
       - redis
     networks:
       - app-network
@@ -60,44 +31,92 @@ services:
     networks:
       - app-network
 
-  mongodb:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
+  load-balancer:
+    image: nginx:alpine
     volumes:
-      - mongodb_data:/data/db
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
     networks:
       - app-network
+
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:3000/auth
+      - LB_URL=http://load-balancer:80
+      - CANVAS_API_URL=http://canvas-api:${CANVAS_API_PORT}
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - auth-service
+      - canvas-api
+    networks:
+      - app-network
+
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    environment:
-      - VITE_API_URL=${VITE_API_URL}
-      - VITE_AUTH_URL=${VITE_AUTH_URL}
+      args:
+        VITE_API_URL: "http://localhost:80"  # Adjust as necessary
+        VITE_AUTH_URL: "http://localhost:80"  # Adjust as necessary
     ports:
-      - "3000:80"
-    depends_on:
-      - api-gateway
-      - auth-service
-      - canvas-backend
+      - "3001:3002"  # Map host port 3001 to container port 3002
     networks:
       - app-network
 
-  load-balancer:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  canvas-api:
+    build:
+      context: ./backend/canvas-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - CANVAS_API_PORT=${CANVAS_API_PORT}
+      - CASSANDRA_HOST=cassandra
+      - CASSANDRA_PORT=9042
+      - CASSANDRA_KEYSPACE=myapp_dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     depends_on:
-      - api-gateway
-      - auth-service
-      - frontend
-      - canvas-backend
+      cassandra:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - app-network
+
+  cassandra:
+    image: cassandra:latest
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    environment:
+      CASSANDRA_USER: cassandra
+      CASSANDRA_PASSWORD: cassandra
+      CQL_HISTORY: /var/lib/cassandra/.cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+    user: "cassandra"
+
 
 networks:
   app-network:
@@ -105,4 +124,4 @@ networks:
 
 volumes:
   redis_data:
-  mongodb_data:
+  cassandra_data:

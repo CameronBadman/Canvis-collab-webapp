@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import CustomBackground from '../Componants/CustomBackground';
 import { UserCircle, Loader } from 'lucide-react';
 import { authService } from '../services/AuthService';
+import CustomBackground from "../Componants/CustomBackground"
 
 const LoginPage = ({ isLogin }) => {
   const [email, setEmail] = useState('');
@@ -15,16 +15,17 @@ const LoginPage = ({ isLogin }) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+
     try {
       if (isLogin) {
         await authService.login(email, password);
       } else {
         await authService.register(email, password);
       }
-      navigate('/account');  // Changed from '/' to '/account'
+      navigate('/account');  // Redirects to the account page
     } catch (err) {
       console.error('Auth error:', err);
-      setError(err.error || err.message || 'An error occurred. Please try again.');
+      setError(err.response?.data?.message || err.message || 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

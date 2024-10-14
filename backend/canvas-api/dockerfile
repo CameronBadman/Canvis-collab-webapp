@@ -1,0 +1,35 @@
+# Use Go 1.22
+FROM golang:1.22-alpine
+
+# Install necessary tools
+RUN apk add --no-cache bash curl netcat-openbsd gcc musl-dev
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download all dependencies
+RUN go mod download
+
+# Copy the source code and scripts into the container
+COPY . .
+
+# Build the application
+RUN go build -o main ./cmd/server
+
+# Copy the wait-for-cassandra and initialize scripts
+# Copy the wait-for-cassandra script
+COPY wait-for-cassandra.sh ./
+RUN chmod +x wait-for-cassandra.sh
+
+# Copy the init-cassandra script
+COPY init-cassandra.sh ./
+RUN chmod +x init-cassandra.sh
+
+# Expose the port the app runs on
+EXPOSE ${CANVAS_API_PORT}
+
+# Use the wait-for-cassandra script, initialize Cassandra, then start the app
+CMD ["sh", "-c", "./wait-for-cassandra.sh && ./init-cassandra.sh && ./main"]

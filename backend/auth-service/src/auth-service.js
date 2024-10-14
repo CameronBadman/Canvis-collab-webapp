@@ -2,50 +2,46 @@ const express = require('express');
 const dotenv = require('dotenv');
 const { initializeFirebase, initializeRedis } = require('./config');
 const authRoutes = require('./routes/auth');
+const cors = require('cors');
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-// Add debug logging middleware
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('Body:', JSON.stringify(req.body, null, 2));
-  next();
-});
 
 async function startServer() {
   try {
-    // Initialize Firebase
-    initializeFirebase();
+    console.log('Loading environment variables...');
+    
+    // Log specific variables for debugging (avoid sensitive information)
+    console.log('Environment variables loaded:', {
+      REDIS_HOST: process.env.REDIS_HOST,
+      FIREBASE_SERVICE_ACCOUNT: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+    });
 
-    // Initialize Redis
+    console.log('Initializing Firebase...');
+    await initializeFirebase();
+    
+    console.log('Initializing Redis...');
     await initializeRedis();
 
     // Use auth routes
-    app.use('/auth', authRoutes);
+    app.use('/', authRoutes);
+    console.log('Auth routes registered.');
 
-    // Log all routes
-    console.log('All registered routes:');
-    app._router.stack.forEach(function(r){
-      if (r.route && r.route.path){
-        console.log(`${Object.keys(r.route.methods).join(', ').toUpperCase()} /auth${r.route.path}`)
-      }
-    })
-
-    const PORT = process.env.PORT || 3000;
+    const PORT = process.env.PORT || 3000; // Use environment variable for port
     app.listen(PORT, () => {
       console.log(`Auth service running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('Failed to start the server:', error);
+    console.error('Failed to start the auth service:', error);
     process.exit(1);
   }
 }
 
+// Catch unhandled rejections during startup
 startServer().catch((error) => {
-  console.error('Unhandled error during server startup:', error);
+  console.error('Unhandled error during auth service startup:', error);
   process.exit(1);
 });
