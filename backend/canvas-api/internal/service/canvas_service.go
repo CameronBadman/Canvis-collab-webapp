@@ -39,20 +39,28 @@ func (s *CanvasService) GetCanvas(firebaseUID string, id gocql.UUID) (*models.Ca
 }
 
 func (s *CanvasService) GetUserCanvases(firebaseUID string) ([]*models.Canvas, error) {
-	query := `
-		SELECT firebase_uid, id, created_at, name
-		FROM canvases
-		WHERE firebase_uid = ?
-	`
+	canvasMap := make(map[gocql.UUID]*models.Canvas)
+	query := "SELECT id, firebase_uid, name, created_at FROM canvases WHERE firebase_uid = ?"
 	iter := s.session.Query(query, firebaseUID).Iter()
-	var canvases []*models.Canvas
+
 	var canvas models.Canvas
-	for iter.Scan(&canvas.FirebaseUID, &canvas.ID, &canvas.CreatedAt, &canvas.Name) {
-		canvases = append(canvases, &canvas)
+	for iter.Scan(&canvas.ID, &canvas.FirebaseUID, &canvas.Name, &canvas.CreatedAt) {
+		canvasMap[canvas.ID] = &models.Canvas{
+			ID:          canvas.ID,
+			FirebaseUID: canvas.FirebaseUID,
+			Name:        canvas.Name,
+			CreatedAt:   canvas.CreatedAt,
+		}
 	}
 	if err := iter.Close(); err != nil {
 		return nil, err
 	}
+
+	canvases := make([]*models.Canvas, 0, len(canvasMap))
+	for _, c := range canvasMap {
+		canvases = append(canvases, c)
+	}
+
 	return canvases, nil
 }
 

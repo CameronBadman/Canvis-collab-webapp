@@ -1,2 +1,5 @@
 node_modules
 .env
+
+
+k8s/config-and-secrets.yaml

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import CustomBackground from '../Componants/CustomBackground';
 import { canvasService } from '../services/CanvasService';
@@ -8,19 +8,12 @@ const AccountPage = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showNewCanvasCard, setShowNewCanvasCard] = useState(false);
+  const [isCreatingCanvas, setIsCreatingCanvas] = useState(false);
   const [newCanvasName, setNewCanvasName] = useState('');
-  const newCanvasInputRef = useRef(null);
 
   useEffect(() => {
     fetchCanvases();
   }, []);
-
-  useEffect(() => {
-    if (showNewCanvasCard && newCanvasInputRef.current) {
-      newCanvasInputRef.current.focus();
-    }
-  }, [showNewCanvasCard]);
 
   const fetchCanvases = async () => {
     try {
@@ -47,21 +40,28 @@ const AccountPage = () => {
     );
   };
 
-  const handleCreateCanvas = async () => {
-    setShowNewCanvasCard(true);
-  };
-
-  const handleCloseNewCanvasCard = () => {
-    setShowNewCanvasCard(false);
+  const handleCreateCanvas = () => {
+    setIsCreatingCanvas(true);
     setNewCanvasName('');
   };
 
-  const handleSubmitNewCanvas = async () => {
+  const handleCancelCreate = () => {
+    setIsCreatingCanvas(false);
+    setNewCanvasName('');
+  };
+
+  const handleNewCanvasNameChange = (e) => {
+    setNewCanvasName(e.target.value);
+  };
+
+  const handleSubmitNewCanvas = async (e) => {
+    e.preventDefault();
     if (newCanvasName.trim()) {
       try {
         const newCanvas = await canvasService.createCanvas(newCanvasName);
         setCanvases([...canvases, newCanvas]);
-        handleCloseNewCanvasCard();
+        setIsCreatingCanvas(false);
+        setNewCanvasName('');
       } catch (err) {
         console.error('Error creating canvas:', err);
         alert('Failed to create a new canvas. Please try again.');
@@ -76,33 +76,6 @@ const AccountPage = () => {
     >
       <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">{canvas.name}</h2>
       <p className="text-sm text-gray-600">Last edited: {new Date(canvas.updated_at).toLocaleDateString()}</p>
-    </div>
-  );
-
-  const NewCanvasCard = () => (
-    <div className={`fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-300 ${showNewCanvasCard ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-      <div className={`bg-white rounded-lg shadow-lg p-6 w-96 transform transition-all duration-300 ${showNewCanvasCard ? 'scale-100' : 'scale-95'}`}>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">Create New Canvas</h2>
-          <button onClick={handleCloseNewCanvasCard} className="text-gray-600 hover:text-gray-800">
-            <X size={24} />
-          </button>
-        </div>
-        <input
-          ref={newCanvasInputRef}
-          type="text"
-          value={newCanvasName}
-          onChange={(e) => setNewCanvasName(e.target.value)}
-          placeholder="Enter canvas name"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 mb-4"
-        />
-        <button
-          onClick={handleSubmitNewCanvas}
-          className="w-full bg-gray-800 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition duration-300"
-        >
-          Create Canvas
-        </button>
-      </div>
     </div>
   );
 
@@ -152,16 +125,40 @@ const AccountPage = () => {
           </button>
         </div>
         
-        <button 
-          onClick={handleCreateCanvas}
-          className="mt-4 bg-gray-800 text-white py-2 px-4 rounded-full hover:bg-gray-700 transition duration-300 flex items-center text-lg"
-        >
-          <Plus size={20} className="mr-2" />
-          Create New Canvas
-        </button>
+        {!isCreatingCanvas ? (
+          <button 
+            onClick={handleCreateCanvas}
+            className="mt-4 bg-gray-800 text-white py-2 px-4 rounded-full hover:bg-gray-700 transition duration-300 flex items-center text-lg"
+          >
+            <Plus size={20} className="mr-2" />
+            Create New Canvas
+          </button>
+        ) : (
+          <form onSubmit={handleSubmitNewCanvas} className="mt-4 flex items-center">
+            <input
+              type="text"
+              value={newCanvasName}
+              onChange={handleNewCanvasNameChange}
+              placeholder="Enter canvas name"
+              className="px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="bg-gray-800 text-white py-2 px-4 rounded-r-md hover:bg-gray-700 transition duration-300"
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelCreate}
+              className="ml-2 bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400 transition duration-300"
+            >
+              Cancel
+            </button>
+          </form>
+        )}
       </div>
-
-      <NewCanvasCard />
     </div>
   );
 };

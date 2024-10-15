@@ -5,7 +5,7 @@ const API_URL = '/api/canvas';
 const USER_COOKIE_NAME = 'user_data';
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:80', // Point to the load balancer
+  baseURL: 'http://localhost:8000', // Point to the load balancer
   timeout: 5000,
 });
 
