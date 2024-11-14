@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cassandra
+  namespace: db
+spec:
+  serviceName: "cassandra"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cassandra
+  template:
+    metadata:
+      labels:
+        app: cassandra
+    spec:
+      containers:
+        - name: cassandra
+          image: cassandra:3.11.10
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9042
+          volumeMounts:
+            - name: cassandra-data
+              mountPath: /var/lib/cassandra
+          envFrom:
+            - configMapRef:
+                name: cassandra-config
+          readinessProbe:
+            exec:
+              command:
+                - "cqlsh"
+                - "-e"
+                - "describe keyspaces"
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: schema-volume
+          configMap:
+            name: cassandra-schema  # Mount the ConfigMap containing schema.cql
+  volumeClaimTemplates:
+    - metadata:
+        name: cassandra-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
