@@ -34,7 +34,7 @@ spec:
               cqlsh cassandra-0.cassandra.db.svc.cluster.local 9042 -e 'DESCRIBE KEYSPACES';
           volumeMounts:
             - name: schema-volume
-              mountPath: /schema  # Mount the ConfigMap here
+              mountPath: /schema
       restartPolicy: OnFailure
       volumes:
         - name: schema-volume
