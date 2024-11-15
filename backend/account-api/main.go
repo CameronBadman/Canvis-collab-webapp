@@ -1,4 +1,4 @@
-package account_api
+package main
 
 import (
 	"account-api/config"
