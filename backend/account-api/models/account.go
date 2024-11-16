@@ -7,4 +7,5 @@ type Account struct {
 	ID       gocql.UUID `json:"id"`
 	Username string     `json:"username"`
 	Email    string     `json:"email"`
+	Password string     `json:"password,omitempty"` // Password is used for Cognito only
 }
