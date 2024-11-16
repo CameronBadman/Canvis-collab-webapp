@@ -27,10 +27,10 @@ spec:
 
               echo "Copying Cassandra ConfigMap and Secret to 'backend' namespace..."
               # Cassandra ConfigMap
-              kubectl get configmap cassandra-config -n db -o yaml | sed "s/namespace: db/namespace: backend/" | kubectl apply -f -
+              kubectl get configmap cassandra-config -n db -o yaml | sed "s/namespace: db/namespace: backend/" | kubectl replace --force -f -
               
               # Cassandra Secret
-              kubectl get secret cassandra-secrets -n db -o yaml | sed "s/namespace: db/namespace: backend/" | kubectl apply -f -
+              kubectl get secret cassandra-secrets -n db -o yaml | sed "s/namespace: db/namespace: backend/" | kubectl replace --force -f -
 
               echo "Creating Redis ConfigMap and Secret in 'backend' namespace..."
               # Redis ConfigMap
@@ -44,3 +44,4 @@ spec:
           securityContext:
             runAsUser: 0  # Run as root to ensure access to namespace creation
       restartPolicy: OnFailure
+      serviceAccountName: default  # Ensure this service account has permissions

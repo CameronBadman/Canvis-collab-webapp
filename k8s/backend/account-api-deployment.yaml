@@ -15,14 +15,35 @@ spec:
     spec:
       containers:
         - name: account-api
-          image: your-docker-username/account-api:latest
+          image: account-api:latest
           ports:
             - containerPort: 8080
           envFrom:
             - configMapRef:
-                name: cassandra-config
+                name: cassandra-config        # Cassandra ConfigMap
+            - configMapRef:
+                name: redis-config            # Redis ConfigMap
             - secretRef:
-                name: cassandra-secrets
+                name: cassandra-secrets       # Cassandra Secret
+            - secretRef:
+                name: backend-redis-secret    # Redis Secret
           env:
             - name: CASSANDRA_HOST
               value: "cassandra.db.svc.cluster.local"
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_PORT
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-redis-secret
+                  key: REDIS_PASSWORD
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always

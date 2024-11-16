@@ -8,12 +8,24 @@ import (
 )
 
 func main() {
+	// Initialize Redis connection
+	log.Println("Initializing Redis...")
+	config.InitRedis()
+	defer func() {
+		if err := config.RedisClient.Close(); err != nil {
+			log.Printf("Failed to close Redis client: %v", err)
+		}
+	}()
+	log.Println("Redis initialized successfully")
+
 	// Initialize Cassandra session
+	log.Println("Initializing Cassandra...")
 	session, err := config.SetupCassandraSession()
 	if err != nil {
 		log.Fatalf("Failed to connect to Cassandra: %v", err)
 	}
 	defer session.Close()
+	log.Println("Cassandra initialized successfully")
 
 	// Initialize the router
 	router := routes.SetupRoutes(session)

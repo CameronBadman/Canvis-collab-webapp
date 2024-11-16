@@ -4,16 +4,21 @@ import (
 	"context"
 	"github.com/go-redis/redis/v8"
 	"log"
+	"os"
 )
 
 var RedisClient *redis.Client
 var RedisCtx = context.Background()
 
 func InitRedis() {
+	// Load Redis configuration from environment variables
+	redisAddr := os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+
 	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379", // Redis server address
-		Password: "",               // No password for default setup
-		DB:       0,                // Use default DB
+		Addr:     redisAddr,     // Redis server address
+		Password: redisPassword, // Redis password
+		DB:       0,             // Use default DB
 	})
 
 	// Test Redis connection
