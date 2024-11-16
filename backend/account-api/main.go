@@ -8,6 +8,11 @@ import (
 )
 
 func main() {
+	// Initialize AWS configuration
+	log.Println("Initializing AWS...")
+	config.InitAWS()
+	log.Println("AWS initialized successfully")
+
 	// Initialize Redis connection
 	log.Println("Initializing Redis...")
 	config.InitRedis()
