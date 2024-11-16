@@ -23,10 +23,14 @@ spec:
                 name: cassandra-config        # Cassandra ConfigMap
             - configMapRef:
                 name: redis-config            # Redis ConfigMap
+            - configMapRef:
+                name: cognito-config          # AWS Cognito ConfigMap
             - secretRef:
                 name: cassandra-secrets       # Cassandra Secret
             - secretRef:
                 name: backend-redis-secret    # Redis Secret
+            - secretRef:
+                name: cognito-secret          # AWS Cognito Secret
           env:
             - name: CASSANDRA_HOST
               value: "cassandra.db.svc.cluster.local"
@@ -45,5 +49,15 @@ spec:
                 secretKeyRef:
                   name: backend-redis-secret
                   key: REDIS_PASSWORD
+            - name: COGNITO_USER_POOL_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cognito-config
+                  key: COGNITO_USER_POOL_ID
+            - name: COGNITO_APP_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cognito-config
+                  key: COGNITO_APP_CLIENT_ID
           imagePullPolicy: IfNotPresent
       restartPolicy: Always
