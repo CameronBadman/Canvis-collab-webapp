@@ -2,41 +2,18 @@ package handlers
 
 import (
 	"account-api/config"
+	"account-api/models"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-
-	"account-api/models"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 	"github.com/gocql/gocql"
 )
-
-// LoggingMiddleware logs all HTTP requests
-func LoggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Request: %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
-		next.ServeHTTP(w, r)
-		log.Printf("Request completed: %s %s", r.Method, r.URL.Path)
-	})
-}
-
-// GenerateSecretHash generates the Cognito SECRET_HASH
-func GenerateSecretHash(clientID, clientSecret, username string) string {
-	log.Printf("Generating SECRET_HASH for username: %s", username)
-
-	h := hmac.New(sha256.New, []byte(clientSecret))
-	h.Write([]byte(username + clientID))
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
-}
 
 func Register(session *gocql.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -50,18 +27,18 @@ func Register(session *gocql.Session) http.HandlerFunc {
 		}
 
 		secretHash := GenerateSecretHash(
-			os.Getenv("COGNITO_APP_CLIENT_ID"),
-			os.Getenv("COGNITO_APP_CLIENT_SECRET"),
+			config.AppClientID,
+			config.AppClientSecret,
 			account.Username,
 		)
 
 		signUpInput := &cognitoidentityprovider.SignUpInput{
-			ClientId:   aws.String(os.Getenv("COGNITO_APP_CLIENT_ID")),
-			SecretHash: aws.String(secretHash),
-			Username:   aws.String(account.Username),
-			Password:   aws.String(account.Password),
+			ClientId:   &config.AppClientID,
+			SecretHash: &secretHash,
+			Username:   &account.Username,
+			Password:   &account.Password,
 			UserAttributes: []types.AttributeType{
-				{Name: aws.String("email"), Value: aws.String(account.Email)},
+				{Name: aws.String("email"), Value: &account.Email},
 			},
 		}
 
@@ -74,7 +51,6 @@ func Register(session *gocql.Session) http.HandlerFunc {
 
 		log.Printf("Cognito signup successful: %v", output)
 
-		// Parse Cognito Sub (string UUID) into a gocql.UUID
 		uuid, err := gocql.ParseUUID(*output.UserSub)
 		if err != nil {
 			log.Printf("Error parsing UUID from Cognito Sub: %v", err)
