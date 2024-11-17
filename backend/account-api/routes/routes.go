@@ -6,15 +6,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// SetupRoutes initializes the routes for the API
+// SetupRoutes initializes the API routes
 func SetupRoutes(session *gocql.Session) *mux.Router {
 	router := mux.NewRouter()
+	router.Use(handlers.LoggingMiddleware)
 
-	// Register route
 	router.HandleFunc("/register", handlers.Register(session)).Methods("POST")
 
-	// Login route
 	router.HandleFunc("/login", handlers.Login(session)).Methods("POST")
 
+	router.HandleFunc("/confirm", handlers.ConfirmSignUp()).Methods("POST")
 	return router
 }
