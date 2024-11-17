@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"account-api/auth"
+	"account-api/caching" // Import caching package
 	"account-api/config"
 	"account-api/models"
 	"context"
@@ -13,7 +14,7 @@ import (
 	"github.com/gocql/gocql"
 )
 
-// Login handles user login and returns user information
+// Login handles user login and returns user information and JWT tokens
 func Login(session *gocql.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var account models.Account
@@ -58,7 +59,17 @@ func Login(session *gocql.Session) http.HandlerFunc {
 		}
 
 		log.Printf("Cognito authentication successful for user: %s, UserID: %s", account.Username, userID)
+		accessToken := *authOutput.AuthenticationResult.AccessToken
+		expiresIn := int64(authOutput.AuthenticationResult.ExpiresIn) // Convert to int64
+		// Store the token in Redis with a user-specific key
+		err = caching.StoreToken(userID, accessToken, expiresIn)
+		if err != nil {
+			http.Error(w, "Failed to store token", http.StatusInternalServerError)
+			log.Printf("Failed to store token in Redis for user %s: %v", userID, err)
+			return
+		}
 
+		// Query the user's details from Cassandra
 		var dbUsername, dbEmail string
 		err = session.Query(`SELECT username, email FROM users WHERE user_id = ?`, userID).Consistency(gocql.One).Scan(&dbUsername, &dbEmail)
 		if err == gocql.ErrNotFound {
@@ -71,6 +82,7 @@ func Login(session *gocql.Session) http.HandlerFunc {
 			return
 		}
 
+		// Respond with the login success message and token data
 		w.Header().Set("Content-Type", "application/json")
 		response := map[string]interface{}{
 			"message":  "Login successful",
@@ -80,10 +92,9 @@ func Login(session *gocql.Session) http.HandlerFunc {
 			"tokens": map[string]string{
 				"access_token":  *authOutput.AuthenticationResult.AccessToken,
 				"id_token":      *authOutput.AuthenticationResult.IdToken,
-				"refresh_token": *authOutput.AuthenticationResult.RefreshToken,
+				"refresh_token": *authOutput.AuthenticationResult.RefreshToken, // Optional, only if needed
 			},
 		}
-		log.Printf("Login successful for user: %s, Response: %v", account.Username, response)
 		json.NewEncoder(w).Encode(response)
 	}
 }
