@@ -5,9 +5,14 @@ import (
 	"account-api/routes"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
+	// Initialize logging settings
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	log.SetOutput(os.Stdout)
+
 	// Initialize AWS configuration
 	log.Println("Initializing AWS...")
 	config.InitAWS()

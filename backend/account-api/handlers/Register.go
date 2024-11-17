@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"account-api/config"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -9,9 +10,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
-	"account-api/config" // Ensure this path is correct
-	"account-api/models" // Ensure this path is correct
+	"account-api/models"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
@@ -19,86 +20,82 @@ import (
 	"github.com/gocql/gocql"
 )
 
-// GenerateSecretHash generates the Cognito SECRET_HASH
-func GenerateSecretHash(clientID, clientSecret, username string) string {
-	h := hmac.New(sha256.New, []byte(clientSecret))
-	h.Write([]byte(username + clientID))
-	secretHash := base64.StdEncoding.EncodeToString(h.Sum(nil))
-	log.Printf("Generated SECRET_HASH for username '%s': %s", username, secretHash) // Debug log
-	return secretHash
+// LoggingMiddleware logs all HTTP requests
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Request: %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+		next.ServeHTTP(w, r)
+		log.Printf("Request completed: %s %s", r.Method, r.URL.Path)
+	})
 }
 
-// Register handles user registration
+// GenerateSecretHash generates the Cognito SECRET_HASH
+func GenerateSecretHash(clientID, clientSecret, username string) string {
+	log.Printf("Generating SECRET_HASH for username: %s", username)
+
+	h := hmac.New(sha256.New, []byte(clientSecret))
+	h.Write([]byte(username + clientID))
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
 func Register(session *gocql.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Register endpoint invoked")
+
 		var account models.Account
 		if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
+			log.Printf("Failed to decode request: %v", err)
 			http.Error(w, "Invalid request payload", http.StatusBadRequest)
-			log.Printf("Error decoding request payload: %v", err)
 			return
 		}
 
-		// Validate required fields
-		if account.Username == "" || account.Password == "" || account.Email == "" {
-			http.Error(w, "Missing required fields: username, password, or email", http.StatusBadRequest)
-			log.Println("Missing required fields in the request payload")
-			return
-		}
+		secretHash := GenerateSecretHash(
+			os.Getenv("COGNITO_APP_CLIENT_ID"),
+			os.Getenv("COGNITO_APP_CLIENT_SECRET"),
+			account.Username,
+		)
 
-		// Generate the SECRET_HASH
-		secretHash := GenerateSecretHash(config.AppClientID, config.AppClientSecret, account.Username)
-
-		// Register the user in Cognito
 		signUpInput := &cognitoidentityprovider.SignUpInput{
-			ClientId:   &config.AppClientID,
-			SecretHash: &secretHash,
-			Username:   &account.Username,
-			Password:   &account.Password,
+			ClientId:   aws.String(os.Getenv("COGNITO_APP_CLIENT_ID")),
+			SecretHash: aws.String(secretHash),
+			Username:   aws.String(account.Username),
+			Password:   aws.String(account.Password),
 			UserAttributes: []types.AttributeType{
-				{Name: aws.String("email"), Value: &account.Email},
+				{Name: aws.String("email"), Value: aws.String(account.Email)},
 			},
 		}
 
-		log.Printf("Attempting Cognito signup for user: %s", account.Username)
-		signUpOutput, err := config.CognitoClient.SignUp(context.TODO(), signUpInput)
+		output, err := config.CognitoClient.SignUp(context.TODO(), signUpInput)
 		if err != nil {
 			log.Printf("Cognito signup failed: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to register user: %v", err), http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("Cognito signup successful for user: %s, Sub: %s", account.Username, *signUpOutput.UserSub)
+		log.Printf("Cognito signup successful: %v", output)
 
-		// Use the Cognito `sub` as the user ID
-		uuid, err := gocql.UUIDFromBytes([]byte(*signUpOutput.UserSub))
+		// Parse Cognito Sub (string UUID) into a gocql.UUID
+		uuid, err := gocql.ParseUUID(*output.UserSub)
 		if err != nil {
-			log.Printf("Error generating UUID from Cognito Sub: %v", err)
+			log.Printf("Error parsing UUID from Cognito Sub: %v", err)
 			http.Error(w, "Failed to generate user ID", http.StatusInternalServerError)
 			return
 		}
-		account.ID = uuid
 
-		// Insert user details into Cassandra
-		log.Printf("Storing user details in Cassandra: ID=%s, Username=%s, Email=%s", account.ID, account.Username, account.Email)
-		err = session.Query(`INSERT INTO users (user_id, username, email) VALUES (?, ?, ?)`,
-			account.ID, account.Username, account.Email).Exec()
+		log.Printf("Parsed UUID: %s", uuid)
+
+		err = session.Query(
+			`INSERT INTO users (user_id, username, email) VALUES (?, ?, ?)`,
+			uuid, account.Username, account.Email).Exec()
 		if err != nil {
-			log.Printf("Failed to store user in Cassandra: %v", err)
-			http.Error(w, "Failed to store user in database", http.StatusInternalServerError)
+			log.Printf("Failed to insert user: %v", err)
+			http.Error(w, "Failed to store user", http.StatusInternalServerError)
 			return
 		}
 
-		// Respond with success
 		w.Header().Set("Content-Type", "application/json")
-		response := map[string]interface{}{
-			"message": "Account created successfully",
-			"account": map[string]interface{}{
-				"user_id":  account.ID,
-				"username": account.Username,
-				"email":    account.Email,
-			},
-		}
-		log.Printf("User registration successful: %v", response)
-		json.NewEncoder(w).Encode(response)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "User registered successfully",
+		})
 	}
 }
