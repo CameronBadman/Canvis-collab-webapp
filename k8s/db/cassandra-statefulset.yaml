@@ -4,7 +4,7 @@ metadata:
   name: cassandra
   namespace: db
 spec:
-  clusterIP: None
+  clusterIP: None  # Ensures each pod gets its own DNS name for peer discovery
   selector:
     app: cassandra
   ports:
@@ -20,8 +20,8 @@ metadata:
   name: cassandra
   namespace: db
 spec:
+  replicas: 2  # Update this to scale the cluster
   serviceName: "cassandra"
-  replicas: 1
   selector:
     matchLabels:
       app: cassandra
@@ -34,13 +34,27 @@ spec:
         - name: cassandra
           image: cassandra:3.11.10
           ports:
-            - containerPort: 9042
+            - containerPort: 9042  # CQL port
+          env:
+            - name: CASSANDRA_CLUSTER_NAME
+              value: "CassandraCluster"  # Define a cluster name
+            - name: CASSANDRA_SEEDS
+              value: "cassandra-0.cassandra.db.svc.cluster.local"
+            - name: CASSANDRA_LISTEN_ADDRESS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP  # Use Pod IP for intra-cluster communication
+            - name: CASSANDRA_BROADCAST_ADDRESS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CASSANDRA_BROADCAST_RPC_ADDRESS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
           volumeMounts:
             - name: cassandra-data
               mountPath: /var/lib/cassandra
-          envFrom:
-            - configMapRef:
-                name: cassandra-config
           readinessProbe:
             exec:
               command: ["cqlsh", "-e", "describe keyspaces"]
