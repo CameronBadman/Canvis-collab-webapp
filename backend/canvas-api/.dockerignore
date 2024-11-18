@@ -1,0 +1,9 @@
+# Ignore Go modules cache
+/vendor/
+
+# Ignore test files
+/test/
+
+# Ignore editor and OS-specific files
+*.swp
+.DS_Store

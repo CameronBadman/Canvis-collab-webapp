@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: canvas-api
+  namespace: backend  # Ensure the correct namespace is used
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: canvas-api
+  template:
+    metadata:
+      labels:
+        app: canvas-api
+    spec:
+      containers:
+        - name: canvas-api
+          image: canvas-api:latest  # Use your built Docker image
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: cassandra-config        # Cassandra ConfigMap
+            - configMapRef:
+                name: redis-config            # Redis ConfigMap
+            - configMapRef:
+                name: cognito-config          # AWS Cognito ConfigMap
+            - secretRef:
+                name: cassandra-secrets       # Cassandra Secret
+            - secretRef:
+                name: backend-redis-secret    # Redis Secret
+            - secretRef:
+                name: cognito-secret          # AWS Cognito Secret
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: canvas-api
+  namespace: backend  # Ensure it is in the correct namespace
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: canvas-api  # This must match the app label in the Deployment
