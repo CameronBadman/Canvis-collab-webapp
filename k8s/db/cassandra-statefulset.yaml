@@ -4,7 +4,7 @@ metadata:
   name: cassandra
   namespace: db
 spec:
-  replicas: 1
+  replicas: 2
   serviceName: "cassandra"
   selector:
     matchLabels:
@@ -14,6 +14,12 @@ spec:
       labels:
         app: cassandra
     spec:
+      initContainers:
+        - name: set-vm-max-map-count
+          image: busybox
+          command: ["sysctl", "-w", "vm.max_map_count=1048575"]
+          securityContext:
+            privileged: true  # Required to modify kernel parameters
       containers:
         - name: cassandra
           image: cassandra:5.0.0  # Latest version
@@ -30,27 +36,38 @@ spec:
             - name: CASSANDRA_LISTEN_ADDRESS
               valueFrom:
                 fieldRef:
-                  fieldPath: status.podIP
+                  fieldPath: status.podIP  # Each pod will use its own IP
             - name: CASSANDRA_BROADCAST_ADDRESS
               valueFrom:
                 fieldRef:
-                  fieldPath: status.podIP
+                  fieldPath: status.podIP  # Broadcast own IP to other nodes
             - name: CASSANDRA_BROADCAST_RPC_ADDRESS
               valueFrom:
                 fieldRef:
-                  fieldPath: status.podIP
+                  fieldPath: status.podIP  # Same as above for RPC communication
             - name: CASSANDRA_RPC_ADDRESS
-              value: 0.0.0.0
-            # Removed heap size settings to use defaults
+              value: 0.0.0.0  # Allows all interfaces for RPC
+            - name: MAX_HEAP_SIZE
+              value: "2g"
             - name: HEAP_NEWSIZE
-              value: "100M"
+              value: "512M"
+            - name: CASSANDRA_COMMITLOG_DIRECTORY
+              value: "/dev/null"  # This disables commit log writes
+            - name: JVM_OPTS
+              value: "-Dcassandra.commitlog_total_space=0 -Dcassandra.commitlog_sync=false"
+            - name: CASSANDRA_DISABLE_COMMITLOG
+              value: "true"  # Disable commit log entirely
           resources:
             requests:
-              memory: "2Gi"  # Increased memory request
+              memory: "4Gi"  # Increased memory request
               cpu: "500m"
             limits:
               memory: "8Gi"  # Increased memory limit
               cpu: "2"
+          securityContext:
+            capabilities:
+              add:
+                - SYS_RESOURCE  # Required to set memlock and other system limits
           volumeMounts:
             - name: cassandra-data
               mountPath: /var/lib/cassandra
@@ -63,7 +80,6 @@ spec:
           requests:
             storage: 20Gi  # Increased storage request to ensure no issues with OOM
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -86,5 +102,3 @@ spec:
     - name: ssl-internode
       port: 7001
       targetPort: 7001
-
-
