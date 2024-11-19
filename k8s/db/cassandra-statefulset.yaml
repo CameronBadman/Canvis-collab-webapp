@@ -1,26 +1,10 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: cassandra
-  namespace: db
-spec:
-  clusterIP: None  # Ensures each pod gets its own DNS name for peer discovery
-  selector:
-    app: cassandra
-  ports:
-    - name: cql
-      port: 9042
-      targetPort: 9042
-
----
-
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: cassandra
   namespace: db
 spec:
-  replicas: 2  # Update this to scale the cluster
+  replicas: 1
   serviceName: "cassandra"
   selector:
     matchLabels:
@@ -32,18 +16,21 @@ spec:
     spec:
       containers:
         - name: cassandra
-          image: cassandra:3.11.10
+          image: cassandra:5.0.0  # Latest version
           ports:
-            - containerPort: 9042  # CQL port
+            - containerPort: 9042  # CQL
+            - containerPort: 7000  # Internode communication
+            - containerPort: 7199  # JMX monitoring (optional)
+            - containerPort: 7001  # SSL internode communication (optional)
           env:
             - name: CASSANDRA_CLUSTER_NAME
-              value: "CassandraCluster"  # Define a cluster name
+              value: "CassandraCluster"
             - name: CASSANDRA_SEEDS
               value: "cassandra-0.cassandra.db.svc.cluster.local"
             - name: CASSANDRA_LISTEN_ADDRESS
               valueFrom:
                 fieldRef:
-                  fieldPath: status.podIP  # Use Pod IP for intra-cluster communication
+                  fieldPath: status.podIP
             - name: CASSANDRA_BROADCAST_ADDRESS
               valueFrom:
                 fieldRef:
@@ -52,16 +39,21 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: CASSANDRA_RPC_ADDRESS
+              value: 0.0.0.0
+            # Removed heap size settings to use defaults
+            - name: HEAP_NEWSIZE
+              value: "100M"
+          resources:
+            requests:
+              memory: "2Gi"  # Increased memory request
+              cpu: "500m"
+            limits:
+              memory: "8Gi"  # Increased memory limit
+              cpu: "2"
           volumeMounts:
             - name: cassandra-data
               mountPath: /var/lib/cassandra
-          readinessProbe:
-            exec:
-              command: ["cqlsh", "-e", "describe keyspaces"]
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
   volumeClaimTemplates:
     - metadata:
         name: cassandra-data
@@ -69,4 +61,30 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 10Gi
+            storage: 20Gi  # Increased storage request to ensure no issues with OOM
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra
+  namespace: db
+spec:
+  clusterIP: None  # Necessary for StatefulSet headless service
+  selector:
+    app: cassandra
+  ports:
+    - name: cql
+      port: 9042
+      targetPort: 9042
+    - name: internode
+      port: 7000
+      targetPort: 7000
+    - name: jmx
+      port: 7199
+      targetPort: 7199
+    - name: ssl-internode
+      port: 7001
+      targetPort: 7001
+
+
