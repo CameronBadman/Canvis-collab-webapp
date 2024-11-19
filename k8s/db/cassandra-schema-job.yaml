@@ -16,22 +16,22 @@ spec:
             - -c
             - |
               # Wait for Cassandra to be ready
-              until cqlsh cassandra-0.cassandra.db.svc.cluster.local 9042 -e 'DESCRIBE KEYSPACES'; do
+              until cqlsh cassandra.db.svc.cluster.local 9042 -e 'DESCRIBE KEYSPACES'; do
                 echo 'Waiting for Cassandra to be ready...';
                 sleep 5;
               done;
 
               # Log the keyspaces before applying the schema
               echo "Existing keyspaces before schema application:";
-              cqlsh cassandra-0.cassandra.db.svc.cluster.local 9042 -e 'DESCRIBE KEYSPACES';
+              cqlsh cassandra.db.svc.cluster.local 9042 -e 'DESCRIBE KEYSPACES';
 
               # Apply the schema
               echo "Applying the schema...";
-              cqlsh cassandra-0.cassandra.db.svc.cluster.local 9042 -f /schema/schema.cql;
+              cqlsh cassandra.db.svc.cluster.local 9042 -f /schema/schema.cql;
 
               # Log the keyspaces again after applying the schema
               echo "Existing keyspaces after schema application:";
-              cqlsh cassandra-0.cassandra.db.svc.cluster.local 9042 -e 'DESCRIBE KEYSPACES';
+              cqlsh cassandra.db.svc.cluster.local 9042 -e 'DESCRIBE KEYSPACES';
           volumeMounts:
             - name: schema-volume
               mountPath: /schema
