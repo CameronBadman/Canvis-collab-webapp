@@ -1,16 +1,7 @@
 apiVersion: v1
-kind: Service
+kind: Namespace
 metadata:
-  name: frontend
-  namespace: nginx-namespace  # Ensure the frontend service is in the same namespace
-spec:
-  selector:
-    app: frontend
-  ports:
-    - protocol: TCP
-      port: 3002
-      targetPort: 3002
-  type: NodePort
+  name: nginx-namespace
 
 ---
 
@@ -22,8 +13,8 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-    - port: 8000          # HTTP port
-      targetPort: 8000    # Port on the NGINX container
+    - port: 8000          # HTTP port exposed externally
+      targetPort: 8000    # Port used by the NGINX container
   selector:
     app: nginx-api-gateway
 
@@ -39,36 +30,36 @@ data:
     server {
         listen 8000;
 
-        # CORS headers (applied to all locations)
-        add_header 'Access-Control-Allow-Origin' 'http://localhost:3002' always;  # Change this to your frontend URL
-        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;  # Allowed methods
-        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;  # Allowed headers
+        # Global CORS headers
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
 
-        location /auth/ {
-            proxy_pass http://auth-service.default.svc.cluster.local:8000/;
-        }
-
-        location /canvas/ {
-            proxy_pass http://canvas-api-service.default.svc.cluster.local/; 
-            # Optional: preserve the original URI
+        # Route to account-api
+        location /account/ {
+            rewrite ^/account(/.*)$ $1 break;
+            proxy_pass http://account-api.backend.svc.cluster.local:8080; # Remove trailing slash
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
-        location / {
-            proxy_pass http://frontend.frontend-namespace.svc.cluster.local:3002/;  # Route to the frontend service
-            # CORS headers for the frontend
-            add_header 'Access-Control-Allow-Origin' 'http://localhost:3002' always;  # Change this to your frontend URL
-            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;  # Allowed methods
-            add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;  # Allowed headers
+        # Route to canvas-api
+        location /canvas/ {
+            rewrite ^/canvas(/.*)$ $1 break;  # Rewrite to remove the /canvas prefix
+            proxy_pass http://canvas-api.backend.svc.cluster.local:8080; # Remove trailing slash
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
 
+        # Health check endpoint
         location /health {
-            access_log off;  # Optional: Disable access logs for health checks
-            return 200 "API Gateway is healthy\n";  # Response for the health check
-            add_header Content-Type text/plain;  # Set content type
+            access_log off;
+            return 200 "API Gateway is healthy\n";
+            add_header Content-Type text/plain;
         }
     }
 
@@ -80,7 +71,7 @@ metadata:
   name: nginx-api-gateway
   namespace: nginx-namespace
 spec:
-  replicas: 1  # Initial number of replicas
+  replicas: 1
   selector:
     matchLabels:
       app: nginx-api-gateway
@@ -90,50 +81,18 @@ spec:
         app: nginx-api-gateway
     spec:
       containers:
-      - name: nginx
-        image: nginx:latest
-        ports:
-        - containerPort: 8000
-        env:
-        - name: NGINX_PORT
-          value: "8000"
-        - name: AUTH_SERVICE_URL
-          value: "auth-service.default.svc.cluster.local:8000"
-        - name: CANVAS_API_URL
-          value: "canvas-api-service.default.svc.cluster.local:6969"
-        volumeMounts:
-        - name: nginx-config-volume
-          mountPath: /etc/nginx/conf.d
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "500m"
-          limits:
-            memory: "512Mi"
-            cpu: "1"
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: nginx-config-volume
+              mountPath: /etc/nginx/conf.d
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
       volumes:
-      - name: nginx-config-volume
-        configMap:
-          name: nginx-config
-
----
-
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: nginx-api-gateway-hpa
-  namespace: nginx-namespace
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: nginx-api-gateway
-  minReplicas: 1
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 50
+        - name: nginx-config-volume
+          configMap:
+            name: nginx-config
