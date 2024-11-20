@@ -120,42 +120,42 @@ func validateTokenWithRedis(userID, providedToken string) (bool, error) {
 	// Retrieve the stored token data from Redis
 	tokenJson, err := config.RedisClient.Get(config.RedisCtx, redisKey).Result()
 	if err != nil {
-		log.Printf("Failed to retrieve token from Redis for user %s: %v", userID, err)
+		//log.Printf("Failed to retrieve token from Redis for user %s: %v", userID, err)
 		return false, errors.New("token not found or error retrieving token")
 	}
 
 	// Log the Redis data (token)
-	log.Printf("Retrieved token from Redis for user %s: %s", userID, tokenJson)
+	//log.Printf("Retrieved token from Redis for user %s: %s", userID, tokenJson)
 
 	// Unmarshal the token data into TokenData struct
 	var tokenData TokenData
 	err = json.Unmarshal([]byte(tokenJson), &tokenData)
 	if err != nil {
-		log.Printf("Failed to unmarshal token data for user %s: %v", userID, err)
+		//log.Printf("Failed to unmarshal token data for user %s: %v", userID, err)
 		return false, err
 	}
 
 	// Log the token data
-	log.Printf("Redis token data for user %s: %+v", userID, tokenData)
+	//log.Printf("Redis token data for user %s: %+v", userID, tokenData)
 
 	// Check if the token is expired
 	if time.Now().Unix() > tokenData.ExpiresAt {
-		log.Printf("Token for user %s is expired", userID)
+		//log.Printf("Token for user %s is expired", userID)
 		return false, errors.New("token is expired")
 	}
 
 	// Log token expiration check
-	log.Printf("Token expiration check passed for user %s", userID)
+	//log.Printf("Token expiration check passed for user %s", userID)
 
 	// Check if the provided token matches the stored token
 	if tokenData.AccessToken != providedToken {
-		log.Printf("Provided token for user %s does not match stored token", userID)
-		log.Printf("Provided token: %s", providedToken)       // Log provided token for comparison
-		log.Printf("Stored token: %s", tokenData.AccessToken) // Log stored token for comparison
+		//log.Printf("Provided token for user %s does not match stored token", userID)
+		//log.Printf("Provided token: %s", providedToken)       // Log provided token for comparison
+		//log.Printf("Stored token: %s", tokenData.AccessToken) // Log stored token for comparison
 		return false, errors.New("token mismatch")
 	}
 
 	// Token is valid
-	log.Printf("Token validation succeeded for user %s", userID)
+	//log.Printf("Token validation succeeded for user %s", userID)
 	return true, nil
 }
