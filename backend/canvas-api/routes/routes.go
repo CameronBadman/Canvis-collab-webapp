@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"canvas-api/caching"
+	"canvas-api/auth"
 	"canvas-api/handlers"
 	"github.com/gocql/gocql"
 	"github.com/gorilla/mux"
@@ -9,22 +9,22 @@ import (
 )
 
 func RegisterCanvasRoutes(r *mux.Router, session *gocql.Session) {
-	// Route to create a new canvas with JWT authentication middleware
-	r.HandleFunc("/canvases", func(w http.ResponseWriter, r *http.Request) {
-		// Extract the userID from the request via JWT
-		// The JWTMiddleware will handle checking the token
+	// Route to create a new canvas
+	r.Handle("/canvases", auth.JWTMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Call handler to create a canvas
+		handlers.CreateCanvas(session).ServeHTTP(w, r)
+	}))).Methods("POST")
 
-		// Apply JWT middleware and then call the handler
-		caching.JWTMiddleware(handlers.CreateCanvas(session), "").ServeHTTP(w, r)
-	}).Methods("POST")
-
-	// Route to get all canvases for a user with JWT authentication middleware
-	r.HandleFunc("/canvases/{user_id}", func(w http.ResponseWriter, r *http.Request) {
-		// Extract the user_id from the URL
+	// Route to get all canvases for a user
+	r.Handle("/canvases/{user_id}", auth.JWTMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Extract userID from the URL path
 		vars := mux.Vars(r)
 		userID := vars["user_id"]
 
-		// Apply JWT middleware with the extracted userID
-		caching.JWTMiddleware(handlers.GetCanvasesByUserID(session), userID).ServeHTTP(w, r)
-	}).Methods("GET")
+		// Set the userID into the context
+		r = r.WithContext(auth.SetUserIDInContext(r.Context(), userID))
+
+		// Call handler to get canvases for the user
+		handlers.GetCanvasesByUserID(session).ServeHTTP(w, r)
+	}))).Methods("GET")
 }

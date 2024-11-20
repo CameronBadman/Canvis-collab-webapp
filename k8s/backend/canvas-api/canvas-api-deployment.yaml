@@ -31,6 +31,41 @@ spec:
                 name: backend-redis-secret    # Redis Secret
             - secretRef:
                 name: cognito-secret          # AWS Cognito Secret
+            - secretRef:
+                name: jwt-secret              # JWT Secret
+          env:
+            - name: CASSANDRA_HOST
+              value: "cassandra.db.svc.cluster.local"
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_PORT
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-redis-secret
+                  key: REDIS_PASSWORD
+            - name: COGNITO_USER_POOL_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cognito-config
+                  key: COGNITO_USER_POOL_ID
+            - name: COGNITO_APP_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cognito-config
+                  key: COGNITO_APP_CLIENT_ID
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: JWT_SECRET_KEY
           imagePullPolicy: IfNotPresent
       restartPolicy: Always
 ---

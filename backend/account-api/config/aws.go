@@ -16,6 +16,7 @@ var (
 	UserPoolID      string
 	AppClientID     string
 	AppClientSecret string
+	AwsRegion       string
 )
 
 // InitAWS initializes the AWS configuration and services
@@ -41,6 +42,7 @@ func InitAWS() {
 
 	// Load Cognito details from environment variables
 	UserPoolID = os.Getenv("COGNITO_USER_POOL_ID")
+	AwsRegion = os.Getenv("AWS_REGION")
 	AppClientID = os.Getenv("COGNITO_APP_CLIENT_ID")
 	AppClientSecret = os.Getenv("COGNITO_APP_CLIENT_SECRET")
 

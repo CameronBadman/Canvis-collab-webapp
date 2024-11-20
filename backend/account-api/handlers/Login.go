@@ -2,99 +2,69 @@ package handlers
 
 import (
 	"account-api/auth"
-	"account-api/caching" // Import caching package
-	"account-api/config"
+	"account-api/caching"
 	"account-api/models"
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
-
-	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
-	"github.com/gocql/gocql"
+	"time"
 )
 
-// Login handles user login and returns user information and JWT tokens
-func Login(session *gocql.Session) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var account models.Account
-		if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
-			http.Error(w, "Invalid request payload", http.StatusBadRequest)
-			log.Printf("Error decoding request payload: %v", err)
-			return
-		}
-
-		if account.Username == "" || account.Password == "" {
-			http.Error(w, "Missing required fields: username or password", http.StatusBadRequest)
-			log.Println("Missing username or password in the request payload")
-			return
-		}
-
-		secretHash := GenerateSecretHash(config.AppClientID, config.AppClientSecret, account.Username)
-
-		authInput := &cognitoidentityprovider.InitiateAuthInput{
-			AuthFlow: "USER_PASSWORD_AUTH",
-			ClientId: &config.AppClientID,
-			AuthParameters: map[string]string{
-				"USERNAME":    account.Username,
-				"PASSWORD":    account.Password,
-				"SECRET_HASH": secretHash,
-			},
-		}
-
-		log.Printf("Attempting Cognito authentication for user: %s", account.Username)
-		authOutput, err := config.CognitoClient.InitiateAuth(context.TODO(), authInput)
-		if err != nil {
-			http.Error(w, "Invalid username or password", http.StatusUnauthorized)
-			log.Printf("Cognito authentication failed for user '%s': %v", account.Username, err)
-			return
-		}
-
-		idToken := authOutput.AuthenticationResult.IdToken
-		userID, err := auth.ExtractSubFromIDToken(*idToken)
-		if err != nil {
-			http.Error(w, "Failed to extract user ID from token", http.StatusInternalServerError)
-			log.Printf("Error extracting user ID from ID token: %v", err)
-			return
-		}
-
-		log.Printf("Cognito authentication successful for user: %s, UserID: %s", account.Username, userID)
-		accessToken := *authOutput.AuthenticationResult.AccessToken
-		expiresIn := int64(authOutput.AuthenticationResult.ExpiresIn) // Convert to int64
-		// Store the token in Redis with a user-specific key
-		err = caching.StoreToken(userID, accessToken, expiresIn)
-		if err != nil {
-			http.Error(w, "Failed to store token", http.StatusInternalServerError)
-			log.Printf("Failed to store token in Redis for user %s: %v", userID, err)
-			return
-		}
-
-		// Query the user's details from Cassandra
-		var dbUsername, dbEmail string
-		err = session.Query(`SELECT username, email FROM users WHERE user_id = ?`, userID).Consistency(gocql.One).Scan(&dbUsername, &dbEmail)
-		if err == gocql.ErrNotFound {
-			http.Error(w, "User not found in database", http.StatusUnauthorized)
-			log.Printf("User not found in Cassandra: UserID=%s", userID)
-			return
-		} else if err != nil {
-			http.Error(w, "Failed to query database", http.StatusInternalServerError)
-			log.Printf("Error querying Cassandra: %v", err)
-			return
-		}
-
-		// Respond with the login success message and token data
-		w.Header().Set("Content-Type", "application/json")
-		response := map[string]interface{}{
-			"message":  "Login successful",
-			"user_id":  userID,
-			"username": dbUsername,
-			"email":    dbEmail,
-			"tokens": map[string]string{
-				"access_token":  *authOutput.AuthenticationResult.AccessToken,
-				"id_token":      *authOutput.AuthenticationResult.IdToken,
-				"refresh_token": *authOutput.AuthenticationResult.RefreshToken, // Optional, only if needed
-			},
-		}
-		json.NewEncoder(w).Encode(response)
+// Login handles user login using Cognito authentication and JWT generation
+func Login(w http.ResponseWriter, r *http.Request) {
+	var account models.Account
+	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		log.Printf("Error decoding request payload: %v", err)
+		return
 	}
+
+	if account.Username == "" || account.Password == "" {
+		http.Error(w, "Missing required fields: username or password", http.StatusBadRequest)
+		log.Println("Missing username or password")
+		return
+	}
+
+	// Step 1: Authenticate with Cognito
+	authOutput, err := auth.CognitoAuthenticate(account.Username, account.Password)
+	if err != nil {
+		http.Error(w, "Authentication failed", http.StatusUnauthorized)
+		log.Printf("Authentication failed for user %s: %v", account.Username, err)
+		return
+	}
+
+	// Step 2: Extract the user ID from the Cognito ID token
+	idToken := authOutput.AuthenticationResult.IdToken
+	userID, err := auth.ExtractSubFromIDToken(*idToken)
+	if err != nil {
+		http.Error(w, "Failed to extract user ID from token", http.StatusInternalServerError)
+		log.Printf("Error extracting user ID from ID token: %v", err)
+		return
+	}
+
+	// Step 3: Generate a JWT for the authenticated user
+	jwtToken, err := auth.GenerateJWT(userID)
+	if err != nil {
+		http.Error(w, "Failed to generate JWT", http.StatusInternalServerError)
+		log.Printf("Error generating JWT for user %s: %v", userID, err)
+		return
+	}
+
+	// Step 4: Store the generated JWT in Redis (as an account cache)
+	expiresIn := time.Now().Add(24 * time.Hour).Unix() // Token expiry time (24 hours)
+	err = caching.StoreToken(userID, jwtToken, expiresIn)
+	if err != nil {
+		http.Error(w, "Failed to store JWT in Redis", http.StatusInternalServerError)
+		log.Printf("Error storing JWT in Redis for user %s: %v", userID, err)
+		return
+	}
+
+	// Step 5: Respond with the login success message and token data
+	response := map[string]interface{}{
+		"message":   "Login successful",
+		"user_id":   userID,
+		"jwt_token": jwtToken,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

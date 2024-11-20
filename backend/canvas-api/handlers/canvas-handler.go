@@ -1,28 +1,31 @@
 package handlers
 
 import (
+	"canvas-api/auth"
 	"encoding/json"
-	"github.com/gorilla/mux"
+	"github.com/gocql/gocql"
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/gocql/gocql"
 )
 
 // Canvas struct represents the canvas structure
 type Canvas struct {
 	CanvasID   gocql.UUID `json:"canvas_id"`
 	CanvasName string     `json:"canvas_name"`
-	CreatedAt  time.Time  `json:"created_at"` // Use time.Time instead of string for timestamp
+	CreatedAt  time.Time  `json:"created_at"`
 }
 
-// GetCanvasesByUserID fetches all canvases for a given user_id
+// GetCanvasesByUserID fetches all canvases for the authenticated user
 func GetCanvasesByUserID(session *gocql.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Extract user_id from URL params
-		vars := mux.Vars(r)
-		userID := vars["user_id"]
+		// Extract userID from context (passed by JWT middleware)
+		userID, ok := auth.UserIDFromContext(r.Context())
+		if !ok {
+			http.Error(w, "User ID not found in context", http.StatusUnauthorized)
+			log.Println("User ID not found in context")
+			return
+		}
 
 		// Query for canvases belonging to the user
 		var canvases []Canvas

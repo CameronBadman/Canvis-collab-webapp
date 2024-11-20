@@ -80,3 +80,30 @@ func CheckToken(providedToken, userID string) (bool, error) {
 	log.Printf("Token for user %s is valid", userID)
 	return true, nil
 }
+
+// RetrieveJWTFromCache retrieves the JWT from Redis based on the userID
+func RetrieveJWTFromCache(userID string) (string, error) {
+	// Construct the Redis key and retrieve token data
+	redisKey := "token:" + userID
+	tokenJson, err := config.RedisClient.Get(config.RedisCtx, redisKey).Result()
+	if err != nil {
+		log.Printf("Failed to retrieve token from Redis for user %s: %v", userID, err)
+		return "", errors.New("token not found or error retrieving token")
+	}
+
+	// Unmarshal token data from JSON
+	var tokenData TokenData
+	err = json.Unmarshal([]byte(tokenJson), &tokenData)
+	if err != nil {
+		log.Printf("Failed to unmarshal token data: %v", err)
+		return "", err
+	}
+
+	// Check if the token has expired
+	if time.Now().Unix() > tokenData.ExpiresAt {
+		log.Printf("Token for user %s is expired", userID)
+		return "", errors.New("token is expired")
+	}
+
+	return tokenData.AccessToken, nil
+}

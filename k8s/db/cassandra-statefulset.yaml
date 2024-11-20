@@ -32,7 +32,7 @@ spec:
             - name: CASSANDRA_CLUSTER_NAME
               value: "CassandraCluster"
             - name: CASSANDRA_SEEDS
-              value: "cassandra-0.cassandra.db.svc.cluster.local"
+              value: "cassandra-0.cassandra.db.svc.cluster.local,cassandra-1.cassandra.db.svc.cluster.local"
             - name: CASSANDRA_LISTEN_ADDRESS
               valueFrom:
                 fieldRef:
