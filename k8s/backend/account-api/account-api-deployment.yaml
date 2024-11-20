@@ -68,3 +68,19 @@ spec:
                   key: JWT_SECRET_KEY
           imagePullPolicy: IfNotPresent
       restartPolicy: Always
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-api
+  namespace: backend
+spec:
+  selector:
+    app: account-api
+  ports:
+    - protocol: TCP
+      port: 8080           # Service port
+      targetPort: 8080     # Container port
+  type: ClusterIP          # Default service type, accessible within the cluster
