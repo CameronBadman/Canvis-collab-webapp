@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"canvas-api/auth"
-	"encoding/json"
+	"encoding/json" // This enables JSON encoding/decoding
 	"github.com/gocql/gocql"
 	"log"
 	"net/http"
@@ -19,7 +19,7 @@ type Canvas struct {
 // GetCanvasesByUserID fetches all canvases for the authenticated user
 func GetCanvasesByUserID(session *gocql.Session) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Extract userID from context (passed by JWT middleware)
+		// Extract userID from context (set by JWT middleware)
 		userID, ok := auth.UserIDFromContext(r.Context())
 		if !ok {
 			http.Error(w, "User ID not found in context", http.StatusUnauthorized)
@@ -27,25 +27,34 @@ func GetCanvasesByUserID(session *gocql.Session) http.HandlerFunc {
 			return
 		}
 
-		// Query for canvases belonging to the user
+		// Log the user ID for debugging
+		log.Printf("Fetching canvases for user ID: %s", userID)
+
+		// Query the database for canvases belonging to the user
 		var canvases []Canvas
 		iter := session.Query(
 			`SELECT canvas_id, canvas_name, created_at FROM canvases WHERE user_id = ?`,
 			userID,
 		).Iter()
 
+		// Fetch the canvases
 		var canvas Canvas
 		for iter.Scan(&canvas.CanvasID, &canvas.CanvasName, &canvas.CreatedAt) {
 			canvases = append(canvases, canvas)
 		}
+
+		// Handle potential query errors
 		if err := iter.Close(); err != nil {
 			http.Error(w, "Failed to fetch canvases", http.StatusInternalServerError)
-			log.Printf("Error fetching canvases: %v", err)
+			log.Printf("Error fetching canvases for user %s: %v", userID, err)
 			return
 		}
 
-		// Return the canvases as a response
+		// Respond with the list of canvases
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(canvases)
+		if err := json.NewEncoder(w).Encode(canvases); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			log.Printf("Error encoding response for user %s: %v", userID, err)
+		}
 	}
 }
