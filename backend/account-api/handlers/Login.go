@@ -13,23 +13,28 @@ import (
 // Login handles user login using Cognito authentication and JWT generation
 func Login(w http.ResponseWriter, r *http.Request) {
 	var account models.Account
+	// Decode the incoming request body into the account struct
 	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		log.Printf("Error decoding request payload: %v", err)
 		return
 	}
 
-	if account.Username == "" || account.Password == "" {
-		http.Error(w, "Missing required fields: username or password", http.StatusBadRequest)
-		log.Println("Missing username or password")
+	// Ensure email and password are provided
+	if account.Email == "" || account.Password == "" {
+		http.Error(w, "Missing required fields: email or password", http.StatusBadRequest)
+		log.Println("Missing email or password")
 		return
 	}
 
-	// Step 1: Authenticate with Cognito
+	// Use the Email as the Username for Cognito Authentication
+	account.Username = account.Email // Now treating Email as Username
+
+	// Step 1: Authenticate with Cognito using Email (now as Username)
 	authOutput, err := auth.CognitoAuthenticate(account.Username, account.Password)
 	if err != nil {
 		http.Error(w, "Authentication failed", http.StatusUnauthorized)
-		log.Printf("Authentication failed for user %s: %v", account.Username, err)
+		log.Printf("Authentication failed for user %s: %v", account.Email, err)
 		return
 	}
 

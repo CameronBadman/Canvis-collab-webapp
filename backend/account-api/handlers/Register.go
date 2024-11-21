@@ -44,18 +44,21 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set the Username to be the email
+	account.Username = account.Email // Set Username to Email
+
 	// Generate SECRET_HASH for Cognito
 	secretHash := GenerateSecretHash(
 		config.AppClientID,
 		config.AppClientSecret,
-		account.Username,
+		account.Username, // Now using Email as Username
 	)
 
 	// Prepare the Cognito SignUp request
 	signUpInput := &cognitoidentityprovider.SignUpInput{
 		ClientId:   &config.AppClientID,
 		SecretHash: &secretHash,
-		Username:   &account.Username,
+		Username:   &account.Username, // Using Email as the Username
 		Password:   &account.Password,
 		UserAttributes: []types.AttributeType{
 			{Name: aws.String("email"), Value: &account.Email},
