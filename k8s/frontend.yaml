@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
+  namespace: nginx-namespace  # Specify the namespace here
 spec:
   replicas: 1
   selector:
@@ -17,19 +18,20 @@ spec:
           image: frontend:latest
           imagePullPolicy: Never
           ports:
-            - containerPort: 3002
+            - containerPort: 3002  # Frontend app port
           env:
-            - name: BACKEND
+            - name: VITE_BACKEND
               value: "http://nginx-api-gateway:8000"  # NGINX API Gateway service URL
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend
+  namespace: nginx-namespace  # Specify the namespace here
 spec:
   selector:
     app: frontend
   ports:
     - protocol: TCP
-      port: 3002
-      targetPort: 3002
+      port: 3002          # Expose service on port 3002
+      targetPort: 3002    # Target container port

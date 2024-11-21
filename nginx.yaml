@@ -30,15 +30,24 @@ data:
     server {
         listen 8000;
 
-        # Global CORS headers
+        # Global CORS headers for API responses
         add_header 'Access-Control-Allow-Origin' '*' always;
         add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
         add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
 
+        # Proxy frontend via API Gateway (proxying to frontend service)
+        location / {
+            proxy_pass http://frontend.nginx-namespace.svc.cluster.local:3002;  # Proxying to the frontend service
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
         # Route to account-api
         location /account/ {
             rewrite ^/account(/.*)$ $1 break;
-            proxy_pass http://account-api.backend.svc.cluster.local:8080; # Remove trailing slash
+            proxy_pass http://account-api.backend.svc.cluster.local:8080;  # Your backend service
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -47,8 +56,8 @@ data:
 
         # Route to canvas-api
         location /canvas/ {
-            rewrite ^/canvas(/.*)$ $1 break;  # Rewrite to remove the /canvas prefix
-            proxy_pass http://canvas-api.backend.svc.cluster.local:8080; # Remove trailing slash
+            rewrite ^/canvas(/.*)$ $1 break;
+            proxy_pass http://canvas-api.backend.svc.cluster.local:8080;  # Your canvas API
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

@@ -1,8 +1,12 @@
 import axios from 'axios';
 import { cookieService } from './CookieService';
 
+
+const backendURL = "http://localhost:8080/"
+
+
 const axiosInstance = axios.create({
-  baseURL: process.env.BACKEND + "/account",
+  baseURL: backendURL + "account",
   timeout: 5000,
 });
 
