@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/go-redis/redis/v8"
+	"github.com/golang-jwt/jwt/v4"
 	"log"
 	"net/http"
 	"os"
@@ -20,127 +20,131 @@ type TokenData struct {
 	ExpiresAt   int64  `json:"expires_at"`
 }
 
-// JWTMiddleware is a middleware for validating JWT tokens using the provided Redis client
+// JWTMiddleware validates JWT tokens using Redis
 func JWTMiddleware(redisClient *redis.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Extract the token from the Authorization header
+			// Parse Authorization header
 			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, "Authorization header is missing", http.StatusUnauthorized)
-				log.Println("Authorization header is missing")
+			log.Printf("Received Authorization header: %s", authHeader)
+
+			if !strings.HasPrefix(authHeader, "Bearer ") {
+				http.Error(w, "Authorization header must start with 'Bearer '", http.StatusUnauthorized)
+				log.Println("Authorization header is missing or invalid")
 				return
 			}
-
-			// Parse the token from the "Bearer <token>" format
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			if tokenString == authHeader {
-				http.Error(w, "Bearer token format is invalid", http.StatusUnauthorized)
-				log.Println("Bearer token format is invalid")
-				return
-			}
+			log.Printf("Extracted token: %s", tokenString)
 
-			// Retrieve the JWT signing key from environment variables
+			// Retrieve JWT signing key
 			signingKey := os.Getenv("JWT_SECRET_KEY")
 			if signingKey == "" {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				log.Println("JWT_SECRET_KEY environment variable is not set")
+				log.Println("Missing JWT_SECRET_KEY environment variable")
+				return
+			}
+			log.Println("Successfully retrieved JWT signing key from environment variables")
+
+			// Parse and validate JWT
+			claims, err := parseAndValidateJWT(tokenString, signingKey)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				log.Printf("JWT validation failed: %v", err)
 				return
 			}
 
-			// Log the full token for debugging (avoid in production)
-			log.Printf("Authorization header: %s", authHeader)
-
-			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, errors.New("unexpected signing method")
-				}
-				return []byte(signingKey), nil
-			})
-
-			// Log token parsing results
-			if err != nil || !token.Valid {
-				http.Error(w, "Invalid token", http.StatusUnauthorized)
-				log.Printf("Token validation error: %v", err)
-				return
-			}
-
-			// Extract claims from the token
-			claims, ok := token.Claims.(jwt.MapClaims)
-			if !ok {
-				http.Error(w, "Invalid token claims", http.StatusUnauthorized)
-				log.Println("Invalid token claims")
-				return
-			}
-
-			// Extract the user ID from the claims
+			// Extract user ID from claims
 			userID, ok := claims["sub"].(string)
-			if !ok {
-				http.Error(w, "User ID missing in token claims", http.StatusUnauthorized)
+			if !ok || userID == "" {
+				//http.Error(w, "Invalid token: missing user ID", http.StatusUnauthorized)
 				log.Println("User ID missing in token claims")
 				return
 			}
+			log.Printf("Extracted user ID: %s", userID)
 
-			// Check for token expiration
-			if exp, ok := claims["exp"].(float64); ok {
-				if int64(exp) < time.Now().Unix() {
-					http.Error(w, "Token has expired", http.StatusUnauthorized)
-					log.Println("Token has expired")
-					return
-				}
-			} else {
-				http.Error(w, "Missing exp claim in token", http.StatusUnauthorized)
-				log.Println("Missing exp claim in token")
-				return
-			}
-
-			// Validate the token with Redis
+			// Validate token against Redis
 			valid, err := validateTokenWithRedis(redisClient, userID, tokenString)
 			if err != nil || !valid {
 				http.Error(w, "Token validation failed", http.StatusUnauthorized)
-				log.Printf("Token validation failed for user %s: %v", userID, err)
+				log.Printf("Redis token validation failed for user %s: %v", userID, err)
 				return
 			}
-
-			// Log successful validation
 			log.Printf("Token validated successfully for user %s", userID)
 
-			// Pass the request to the next handler
+			// Set user ID in context and proceed
 			ctx := SetUserIDInContext(r.Context(), userID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-// validateTokenWithRedis validates the token by comparing it with the stored token in Redis
-func validateTokenWithRedis(redisClient *redis.Client, userID, providedToken string) (bool, error) {
-	// Construct the Redis key
-	redisKey := "token:" + userID
+// parseAndValidateJWT parses the JWT and validates its signature and expiration
+func parseAndValidateJWT(tokenString, signingKey string) (jwt.MapClaims, error) {
+	log.Printf("Parsing JWT token: %s", tokenString)
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Ensure the signing method is HMAC
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			log.Printf("Unexpected signing method: %v", token.Method)
+			return nil, errors.New("unexpected signing method")
+		}
+		log.Println("Successfully verified signing method: HMAC")
+		return []byte(signingKey), nil
+	})
+	if err != nil || !token.Valid {
+		log.Printf("JWT token is invalid: %v", err)
+		//return nil, errors.New("invalid token")
+	}
 
-	// Retrieve the stored token data from Redis
+	// Extract claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		log.Println("Invalid token claims")
+		return nil, errors.New("invalid token claims")
+	}
+
+	// Validate expiration
+	exp, ok := claims["exp"].(float64)
+	if !ok || int64(exp) < time.Now().Unix() {
+		log.Println("Token has expired or invalid exp claim")
+		return nil, errors.New("token has expired")
+	}
+
+	log.Printf("Token is valid with exp: %v", exp)
+	return claims, nil
+}
+
+// validateTokenWithRedis validates the token against the stored token in Redis
+func validateTokenWithRedis(redisClient *redis.Client, userID, providedToken string) (bool, error) {
+	redisKey := "token:" + userID // Use a configurable prefix if needed
+
+	// Fetch token from Redis
+	log.Printf("Fetching token from Redis for user: %s, key: %s", userID, redisKey)
 	tokenJson, err := redisClient.Get(context.Background(), redisKey).Result()
 	if err == redis.Nil {
-		return false, errors.New("token not found")
+		log.Printf("Token not found in Redis for user %s", userID)
+		return false, errors.New("token not found in Redis")
 	} else if err != nil {
+		log.Printf("Redis error while fetching token for user %s: %v", userID, err)
 		return false, err
 	}
 
-	// Unmarshal the token data into TokenData struct
+	// Unmarshal token data
 	var tokenData TokenData
-	err = json.Unmarshal([]byte(tokenJson), &tokenData)
-	if err != nil {
-		return false, err
+	if err := json.Unmarshal([]byte(tokenJson), &tokenData); err != nil {
+		log.Printf("Failed to unmarshal token data for user %s: %v", userID, err)
+		return false, errors.New("failed to parse token data")
 	}
 
-	// Check if the token is expired
+	// Check token expiration and match
 	if time.Now().Unix() > tokenData.ExpiresAt {
-		return false, errors.New("token is expired")
+		log.Printf("Token has expired for user %s", userID)
+		return false, errors.New("token has expired")
 	}
-
-	// Check if the provided token matches the stored token
 	if tokenData.AccessToken != providedToken {
+		log.Printf("Token mismatch for user %s: expected %s, got %s", userID, tokenData.AccessToken, providedToken)
 		return false, errors.New("token mismatch")
 	}
 
+	log.Printf("Token validated successfully for user %s", userID)
 	return true, nil
 }
