@@ -1,24 +1,3 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: redis-drawing
-  
----
-
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: redis-drawing-config
-  namespace: redis-drawing
-data:
-  redis.conf: |
-    maxmemory 512mb
-    maxmemory-policy allkeys-lru
-    appendonly yes
-    save 60 1000
-    
----
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -36,41 +15,30 @@ spec:
     spec:
       containers:
         - name: redis
-          image: redis:7.0
+          image: redis:7.0  # Use appropriate Redis version
           ports:
             - containerPort: 6379
+          env:
+            - name: DRAWING_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: drawing-redis-secret  # Referencing the drawing-redis-secret
+                  key: REDIS_PASSWORD
+          args: ["--requirepass", "$(DRAWING_REDIS_PASSWORD)"]  # Use dynamic password from environment variable
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
           volumeMounts:
-            - mountPath: /data
-              name: redis-data
-            - mountPath: /usr/local/etc/redis/redis.conf
-              subPath: redis.conf
-              name: redis-config
-          command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+            - name: redis-data
+              mountPath: /data
       volumes:
         - name: redis-data
-          persistentVolumeClaim:
-            claimName: redis-drawing-pvc
-        - name: redis-config
-          configMap:
-            name: redis-drawing-config
-
+          emptyDir: {}  # Or you can use a PersistentVolumeClaim if needed
 ---
-
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: redis-drawing-pvc
-  namespace: redis-drawing
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-
-
----
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -83,4 +51,4 @@ spec:
     - protocol: TCP
       port: 6379
       targetPort: 6379
-
+  clusterIP: None

@@ -4,27 +4,29 @@ import (
 	"context"
 	"github.com/go-redis/redis/v8"
 	"log"
-	"os"
 )
 
-var RedisClient *redis.Client
+// RedisCtx is a shared context for Redis operations
 var RedisCtx = context.Background()
 
-func InitRedis() {
-	// Load Redis configuration from environment variables
-	redisAddr := os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT")
-	redisPassword := os.Getenv("REDIS_PASSWORD")
+// InitRedis initializes a new Redis client with provided configuration
+func InitRedis(redisHost, redisPort, redisPassword string) *redis.Client {
+	// Construct Redis address
+	redisAddr := redisHost + ":" + redisPort
 
-	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     redisAddr,     // Redis server address
-		Password: redisPassword, // Redis password
-		DB:       0,             // Use default DB
+	// Create a Redis client
+	client := redis.NewClient(&redis.Options{
+		Addr:     redisAddr,
+		Password: redisPassword, // Add if necessary
+		DB:       0,             // Default DB
 	})
 
 	// Test Redis connection
-	_, err := RedisClient.Ping(RedisCtx).Result()
+	_, err := client.Ping(RedisCtx).Result()
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		log.Fatalf("Failed to connect to Redis at %s: %v", redisAddr, err)
 	}
-	log.Println("Connected to Redis")
+
+	log.Printf("Connected to Redis at %s", redisAddr)
+	return client
 }

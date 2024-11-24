@@ -20,71 +20,85 @@ spec:
             - containerPort: 8080
           envFrom:
             - configMapRef:
-                name: cassandra-config        # Cassandra ConfigMap
+                name: canvas-config        # General Canvas ConfigMap
             - configMapRef:
-                name: redis-config            # Redis ConfigMap
+                name: redis-config         # Redis ConfigMap
             - configMapRef:
-                name: cognito-config          # AWS Cognito ConfigMap
+                name: cognito-config       # Cognito ConfigMap
+            - configMapRef:
+                name: cassandra-config     # Cassandra ConfigMap
             - secretRef:
-                name: cassandra-secrets       # Cassandra Secret
+                name: jwt-secret           # Secret for JWT
             - secretRef:
-                name: backend-redis-secret    # Redis Secret for Auth Redis
+                name: backend-redis-secret # Secret for Auth Redis
             - secretRef:
-                name: drawing-redis-secret    # Redis Secret for Drawing Redis
+                name: cognito-secret       # Secret for AWS Cognito
             - secretRef:
-                name: cognito-secret          # AWS Cognito Secret
-            - secretRef:
-                name: jwt-secret              # JWT Secret
+                name: drawing-redis-secret # Secret for Drawing Redis
           env:
+            # Cassandra environment variables
             - name: CASSANDRA_HOST
               value: "cassandra.db.svc.cluster.local"
-            - name: REDIS_AUTH_HOST
+            - name: CASSANDRA_PASSWORD
               valueFrom:
-                configMapKeyRef:
-                  name: redis-config
-                  key: REDIS_AUTH_HOST
-            - name: REDIS_AUTH_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: redis-config
-                  key: REDIS_AUTH_PORT
-            - name: REDIS_AUTH_PASSWORD
+                secretKeyRef:
+                  name: cassandra-secrets
+                  key: CASSANDRA_PASSWORD
+
+            # Redis environment variables for Authentication
+            - name: AUTH_REDIS_HOST
+              value: "redis.backend.svc.cluster.local"
+            - name: AUTH_REDIS_PORT
+              value: "6379"
+            - name: AUTH_REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: backend-redis-secret
                   key: REDIS_PASSWORD
-            - name: REDIS_DRAWING_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: redis-config
-                  key: REDIS_DRAWING_HOST
-            - name: REDIS_DRAWING_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: redis-config
-                  key: REDIS_DRAWING_PORT
-            - name: REDIS_DRAWING_PASSWORD
+
+            # Redis environment variables for Drawing
+            - name: DRAWING_REDIS_HOST
+              value: "redis-drawing.redis-drawing.svc.cluster.local"
+            - name: DRAWING_REDIS_PORT
+              value: "6379"
+            - name: DRAWING_REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: drawing-redis-secret
                   key: REDIS_PASSWORD
+
+            # Cognito environment variables
             - name: COGNITO_USER_POOL_ID
               valueFrom:
-                configMapKeyRef:
-                  name: cognito-config
+                secretKeyRef:
+                  name: cognito-secret
                   key: COGNITO_USER_POOL_ID
             - name: COGNITO_APP_CLIENT_ID
               valueFrom:
-                configMapKeyRef:
-                  name: cognito-config
+                secretKeyRef:
+                  name: cognito-secret
                   key: COGNITO_APP_CLIENT_ID
+            - name: COGNITO_APP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-secret
+                  key: COGNITO_APP_CLIENT_SECRET
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-secret
+                  key: AWS_REGION
+
+            # JWT Secret environment variable
             - name: JWT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: jwt-secret
                   key: JWT_SECRET_KEY
+
           imagePullPolicy: IfNotPresent
       restartPolicy: Always
+
 ---
 apiVersion: v1
 kind: Service
