@@ -28,7 +28,9 @@ spec:
             - secretRef:
                 name: cassandra-secrets       # Cassandra Secret
             - secretRef:
-                name: backend-redis-secret    # Redis Secret
+                name: backend-redis-secret    # Redis Secret for Auth Redis
+            - secretRef:
+                name: drawing-redis-secret    # Redis Secret for Drawing Redis
             - secretRef:
                 name: cognito-secret          # AWS Cognito Secret
             - secretRef:
@@ -36,20 +38,35 @@ spec:
           env:
             - name: CASSANDRA_HOST
               value: "cassandra.db.svc.cluster.local"
-            - name: REDIS_HOST
+            - name: REDIS_AUTH_HOST
               valueFrom:
                 configMapKeyRef:
                   name: redis-config
-                  key: REDIS_HOST
-            - name: REDIS_PORT
+                  key: REDIS_AUTH_HOST
+            - name: REDIS_AUTH_PORT
               valueFrom:
                 configMapKeyRef:
                   name: redis-config
-                  key: REDIS_PORT
-            - name: REDIS_PASSWORD
+                  key: REDIS_AUTH_PORT
+            - name: REDIS_AUTH_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: backend-redis-secret
+                  key: REDIS_PASSWORD
+            - name: REDIS_DRAWING_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_DRAWING_HOST
+            - name: REDIS_DRAWING_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_DRAWING_PORT
+            - name: REDIS_DRAWING_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: drawing-redis-secret
                   key: REDIS_PASSWORD
             - name: COGNITO_USER_POOL_ID
               valueFrom:

@@ -1,6 +1,0 @@
-@drawing_api_HostAddress = http://localhost:5013
-
-GET {{drawing_api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

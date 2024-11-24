@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: redis-drawing
+  
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-drawing-config
+  namespace: redis-drawing
+data:
+  redis.conf: |
+    maxmemory 512mb
+    maxmemory-policy allkeys-lru
+    appendonly yes
+    save 60 1000
+    
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-drawing
+  namespace: redis-drawing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-drawing
+  template:
+    metadata:
+      labels:
+        app: redis-drawing
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.0
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - mountPath: /data
+              name: redis-data
+            - mountPath: /usr/local/etc/redis/redis.conf
+              subPath: redis.conf
+              name: redis-config
+          command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-drawing-pvc
+        - name: redis-config
+          configMap:
+            name: redis-drawing-config
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-drawing-pvc
+  namespace: redis-drawing
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-drawing
+  namespace: redis-drawing
+spec:
+  selector:
+    app: redis-drawing
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+

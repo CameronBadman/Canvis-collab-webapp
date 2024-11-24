@@ -28,7 +28,6 @@ apply_configmap() {
   kubectl create configmap "$name" --from-env-file="$file" -n "$namespace" --dry-run=client -o yaml | kubectl apply -f -
 }
 
-
 # Function to create or replace a Secret
 apply_secret() {
   local name=$1
@@ -58,8 +57,13 @@ COGNITO_APP_CLIENT_ID=$(grep -w "COGNITO_APP_CLIENT_ID" "$ENV_FILE" | cut -d '='
 COGNITO_APP_CLIENT_SECRET=$(grep -w "COGNITO_APP_CLIENT_SECRET" "$ENV_FILE" | cut -d '=' -f2)
 AWS_REGION=$(grep -w "AWS_REGION" "$ENV_FILE" | cut -d '=' -f2)
 
+# New drawing Redis variables
+DRAWING_REDIS_HOST=$(grep -w "DRAWING_REDIS_HOST" "$ENV_FILE" | cut -d '=' -f2)
+DRAWING_REDIS_PORT=$(grep -w "DRAWING_REDIS_PORT" "$ENV_FILE" | cut -d '=' -f2)
+DRAWING_REDIS_PASSWORD=$(grep -w "DRAWING_REDIS_PASSWORD" "$ENV_FILE" | cut -d '=' -f2)
+
 # Check required sensitive variables
-if [[ -z "$JWT_SECRET_KEY" || -z "$REDIS_PASSWORD" || -z "$COGNITO_APP_CLIENT_SECRET" ]]; then
+if [[ -z "$JWT_SECRET_KEY" || -z "$REDIS_PASSWORD" || -z "$COGNITO_APP_CLIENT_SECRET" || -z "$DRAWING_REDIS_PASSWORD" ]]; then
   echo "Error: Missing required sensitive values in $ENV_FILE."
   exit 1
 fi
@@ -80,5 +84,8 @@ apply_secret "cognito-secret" "$BACKEND_NAMESPACE" \
   --from-literal=COGNITO_APP_CLIENT_ID="$COGNITO_APP_CLIENT_ID" \
   --from-literal=COGNITO_APP_CLIENT_SECRET="$COGNITO_APP_CLIENT_SECRET" \
   --from-literal=AWS_REGION="$AWS_REGION"
+
+# New secret for drawing Redis
+apply_secret "drawing-redis-secret" "$BACKEND_NAMESPACE" --from-literal=REDIS_PASSWORD="$DRAWING_REDIS_PASSWORD"
 
 echo "Setup completed successfully!"
