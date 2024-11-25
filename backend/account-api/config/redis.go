@@ -12,7 +12,7 @@ var RedisCtx = context.Background()
 
 func InitRedis() {
 	// Load Redis configuration from environment variables
-	redisAddr := os.Getenv("AUTH_REDIS_HOST") + ":" + os.Getenv("AUTH_REDIS_PASSWORD")
+	redisAddr := os.Getenv("AUTH_REDIS_HOST") + ":" + os.Getenv("AUTH_REDIS_PORT")
 	redisPassword := os.Getenv("AUTH_REDIS_PASSWORD")
 
 	RedisClient = redis.NewClient(&redis.Options{

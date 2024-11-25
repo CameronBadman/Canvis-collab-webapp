@@ -74,29 +74,44 @@ func StageCanvas(session *gocql.Session, redisClient *redis.Client) http.Handler
 			return
 		}
 
-		// Serialize canvas data for Redis
-		canvasData := map[string]interface{}{
+		// Serialize canvas metadata and SVG data separately
+		canvasInfo := map[string]interface{}{
 			"canvas_name": canvas.CanvasName,
 			"created_at":  canvas.CreatedAt,
-			"svg_data":    svgData,
 		}
-		canvasJSON, err := json.Marshal(canvasData)
+		canvasInfoJSON, err := json.Marshal(canvasInfo)
 		if err != nil {
-			http.Error(w, "Failed to serialize canvas data", http.StatusInternalServerError)
-			log.Printf("Error serializing canvas data: %v", err)
+			http.Error(w, "Failed to serialize canvas metadata", http.StatusInternalServerError)
+			log.Printf("Error serializing canvas metadata: %v", err)
+			return
+		}
+
+		svgDataJSON, err := json.Marshal(svgData)
+		if err != nil {
+			http.Error(w, "Failed to serialize SVG data", http.StatusInternalServerError)
+			log.Printf("Error serializing SVG data: %v", err)
 			return
 		}
 
 		// Generate a unique stagingID
 		stagingID := generateStagingID()
 
-		// Store canvas data in Redis using the stagingID
+		// Store canvas metadata and SVG data in Redis using separate keys
 		ctx := context.Background()
-		redisKey := "staged_canvas:" + stagingID
-		err = redisClient.Set(ctx, redisKey, canvasJSON, 10*time.Minute).Err()
+		canvasInfoKey := "canvas-info:" + stagingID
+		canvasSVGKey := "canvas-svg:" + stagingID
+
+		err = redisClient.Set(ctx, canvasInfoKey, canvasInfoJSON, 10*time.Minute).Err()
 		if err != nil {
-			http.Error(w, "Failed to stage canvas", http.StatusInternalServerError)
-			log.Printf("Error storing canvas in Redis: %v", err)
+			http.Error(w, "Failed to stage canvas metadata", http.StatusInternalServerError)
+			log.Printf("Error storing canvas metadata in Redis: %v", err)
+			return
+		}
+
+		err = redisClient.Set(ctx, canvasSVGKey, svgDataJSON, 10*time.Minute).Err()
+		if err != nil {
+			http.Error(w, "Failed to stage SVG data", http.StatusInternalServerError)
+			log.Printf("Error storing SVG data in Redis: %v", err)
 			return
 		}
 

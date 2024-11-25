@@ -34,23 +34,27 @@ spec:
             - secretRef:
                 name: jwt-secret              # JWT Secret
           env:
+            # Cassandra environment variables
             - name: CASSANDRA_HOST
               value: "cassandra.db.svc.cluster.local"
-            - name: REDIS_HOST
+            - name: CASSANDRA_PASSWORD
               valueFrom:
-                configMapKeyRef:
-                  name: redis-config
-                  key: REDIS_HOST
-            - name: REDIS_PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: redis-config
-                  key: REDIS_PORT
-            - name: REDIS_PASSWORD
+                secretKeyRef:
+                  name: cassandra-secrets
+                  key: CASSANDRA_PASSWORD
+
+            # Redis environment variables for Authentication
+            - name: AUTH_REDIS_HOST
+              value: "redis.backend.svc.cluster.local"
+            - name: AUTH_REDIS_PORT
+              value: "6379"
+            - name: AUTH_REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: backend-redis-secret
                   key: REDIS_PASSWORD
+
+            # Cognito environment variables
             - name: COGNITO_USER_POOL_ID
               valueFrom:
                 configMapKeyRef:
@@ -61,11 +65,24 @@ spec:
                 configMapKeyRef:
                   name: cognito-config
                   key: COGNITO_APP_CLIENT_ID
+            - name: COGNITO_APP_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-secret
+                  key: COGNITO_APP_CLIENT_SECRET
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-secret
+                  key: AWS_REGION
+
+            # JWT Secret environment variable
             - name: JWT_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: jwt-secret
                   key: JWT_SECRET_KEY
+
           imagePullPolicy: IfNotPresent
       restartPolicy: Always
 

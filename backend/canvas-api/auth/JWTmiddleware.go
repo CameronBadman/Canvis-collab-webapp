@@ -56,7 +56,7 @@ func JWTMiddleware(redisClient *redis.Client) func(http.Handler) http.Handler {
 			// Extract user ID from claims
 			userID, ok := claims["sub"].(string)
 			if !ok || userID == "" {
-				//http.Error(w, "Invalid token: missing user ID", http.StatusUnauthorized)
+				http.Error(w, "Invalid token: missing user ID", http.StatusUnauthorized)
 				log.Println("User ID missing in token claims")
 				return
 			}
