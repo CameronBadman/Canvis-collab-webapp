@@ -5,14 +5,28 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d51720a6-7f42-4462-9beb-cc60d20fd93e" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/Canvis-collab-webapp.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Canvis-collab-webapp.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/account-api/config/redis.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/account-api/config/redis.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/canvas-api/auth/JWTmiddleware.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/canvas-api/auth/JWTmiddleware.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/canvas-api/handlers/canvas-staging-handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/canvas-api/handlers/canvas-staging-handler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/k8s/backend/account-api/account-api-deployment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/k8s/backend/account-api/account-api-deployment.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/k8s/backend/account-api/redis.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/k8s/backend/account-api/redis.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/canvas-api/handlers/canvas-get-staging-handler.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/drawing-api/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/canvas-api/routes/routes.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/canvas-api/routes/routes.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Controllers/HealthController.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Handlers/WebSocketHandler.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Models/DrawingMessage.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Program.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Properties/launchSettings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Services/DrawingService.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Services/KafkaProducerService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/backend/drawing-api/Controllers/DrawingControler.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Services/RedisService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/backend/drawing-api/Services/WebSocketService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Utilities/WebSocketExtensions.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/appsettings.Development.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/appsettings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/drawing-api.csproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/drawing-api.http" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/obj/drawing-api.csproj.nuget.dgspec.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/obj/drawing-api.csproj.nuget.g.props" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/obj/drawing-api.csproj.nuget.g.targets" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/obj/project.assets.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/obj/project.nuget.cache" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,9 +40,9 @@
         <option value="Kubernetes Job" />
         <option value="Kubernetes Deployment" />
         <option value="Kubernetes RoleBinding" />
+        <option value="Kubernetes Pod" />
         <option value="Dockerfile" />
         <option value="Go File" />
-        <option value="Kubernetes Pod" />
       </list>
     </option>
   </component>

@@ -1,35 +1,35 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using DrawingApi.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Register services
-builder.Services.AddSingleton<RedisService>();
-builder.Services.AddSingleton<DrawingService>();
-builder.Services.AddSingleton<DrawingMessageHandler>();
-builder.Services.AddSingleton<WebSocketHandler>();
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddSingleton<WebSocketService>(); // Register WebSocket service
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline.
+app.UseRouting();
+
+app.MapControllers();
+
 // Enable WebSocket support
 app.UseWebSockets();
-
-// WebSocket endpoint
-app.UseEndpoints(endpoints =>
+app.Use(async (context, next) =>
 {
-    endpoints.MapGet("/ws", async context =>
+    if (context.WebSockets.IsWebSocketRequest)
     {
-        if (context.WebSockets.IsWebSocketRequest)
-        {
-            var webSocketHandler = context.RequestServices.GetRequiredService<WebSocketHandler>();
-            var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-            await webSocketHandler.HandleAsync(context, webSocket);
-        }
-        else
-        {
-            context.Response.StatusCode = 400;
-        }
-    });
+        using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+        var websocketService = app.Services.GetRequiredService<WebSocketService>();
+        await websocketService.HandleWebSocketAsync(webSocket, context.RequestAborted);
+    }
+    else
+    {
+        await next();
+    }
 });
-
-// Health check endpoint
-app.MapControllers();
 
 app.Run();

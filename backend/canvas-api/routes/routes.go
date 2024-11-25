@@ -27,4 +27,9 @@ func RegisterCanvasRoutes(r *mux.Router, session *gocql.Session, drawingRedisCli
 	r.Handle("/stage", authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handlers.StageCanvas(session, drawingRedisClient).ServeHTTP(w, r)
 	}))).Methods("POST")
+
+	// Route to get staged canvas by staging ID, no authMiddleware
+	r.Handle("/staged/{staging_id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlers.GetStagedCanvas(drawingRedisClient).ServeHTTP(w, r)
+	})).Methods("GET")
 }
