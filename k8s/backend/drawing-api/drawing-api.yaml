@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drawing-api
+  namespace: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drawing-api
+  template:
+    metadata:
+      labels:
+        app: drawing-api
+    spec:
+      containers:
+        - name: drawing-api
+          image: drawing-api:latest  # Use your built Docker image
+          ports:
+            - containerPort: 5000    # Update if the WebSocket listens on a different port
+          envFrom:
+            - configMapRef:
+                name: canvas-config        # General Canvas ConfigMap
+            - configMapRef:
+                name: redis-config         # Redis ConfigMap
+            - secretRef:
+                name: drawing-redis-secret # Secret for Drawing Redis
+            - secretRef:
+                name: cassandra-secrets    # Secret for Cassandra DB
+          env:
+            # Cassandra environment variables
+            - name: CASSANDRA_HOST
+              value: "cassandra.db.svc.cluster.local"
+            - name: CASSANDRA_PORT
+              value: "9042"
+            - name: CASSANDRA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cassandra-secrets
+                  key: CASSANDRA_PASSWORD
+
+            # Redis environment variables for Drawing
+            - name: DRAWING_REDIS_HOST
+              value: "redis-drawing.redis-drawing.svc.cluster.local"
+            - name: DRAWING_REDIS_PORT
+              value: "6379"
+            - name: DRAWING_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: drawing-redis-secret
+                  key: REDIS_PASSWORD
+
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drawing-api
+  namespace: backend
+spec:
+  ports:
+    - port: 8080          # Port exposed by the service
+      targetPort: 8080    # Container's WebSocket port
+  selector:
+    app: drawing-api      # This must match the app label in the Deployment

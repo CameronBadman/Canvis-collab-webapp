@@ -1,3 +1,4 @@
+using System;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -5,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DrawingApi.Services
 {
-    public class WebSocketService
+    public class WebSocketService2
     {
         public async Task HandleWebSocketAsync(WebSocket webSocket, CancellationToken cancellationToken)
         {
@@ -18,10 +19,10 @@ namespace DrawingApi.Services
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Console.WriteLine($"Received message: {message}");
+                    Console.WriteLine($"[Service2] Received message: {message}");
 
                     // Echo the message back to the client
-                    await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(message)), result.MessageType, result.EndOfMessage, cancellationToken);
+                    await webSocket.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes($"[Service2] Echo: {message}")), result.MessageType, result.EndOfMessage, cancellationToken);
                 }
             }
         }
