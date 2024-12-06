@@ -5,11 +5,21 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d51720a6-7f42-4462-9beb-cc60d20fd93e" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/frontend/src/Componants/Canvas/CanvasComponant.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Services/WebSocketService1.cs" beforeDir="false" afterPath="$PROJECT_DIR$/backend/drawing-api/Services/WebSocketService1.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/backend/drawing-api/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Services/WebSocketService1.cs" beforeDir="false" afterPath="$PROJECT_DIR$/backend/drawing-api/Services/WebSocketService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/Services/WebSocketService2.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/drawing-api.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/backend/drawing-api/drawing-api.csproj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/obj/drawing-api.csproj.nuget.dgspec.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/drawing-api/obj/drawing-api.csproj.nuget.dgspec.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/obj/project.assets.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/drawing-api/obj/project.assets.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/drawing-api/obj/project.nuget.cache" beforeDir="false" afterPath="$PROJECT_DIR$/backend/drawing-api/obj/project.nuget.cache" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Componants/Canvas/Canvas.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Componants/Sidebar/Sidebar.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Componants/Sidebar/Sidebar.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Pages/CanvisPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Pages/CanvisPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/services/DrawService.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/DrawService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/k8s/nginx.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/k8s/nginx.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/websocket-test/websocket.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,6 +37,7 @@
         <option value="Go File" />
         <option value="Kubernetes Pod" />
         <option value="JavaScript File" />
+        <option value="JSX File" />
       </list>
     </option>
   </component>
@@ -106,11 +117,11 @@
       <recent name="$PROJECT_DIR$/backend/canvas-api" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/frontend/src/Componants/Canvas" />
       <recent name="$PROJECT_DIR$/k8s" />
       <recent name="$PROJECT_DIR$/websocket-test" />
       <recent name="$PROJECT_DIR$/k8s/backend/account-api" />
       <recent name="$PROJECT_DIR$/k8s/db" />
-      <recent name="$PROJECT_DIR$" />
     </key>
   </component>
   <component name="RunManager">

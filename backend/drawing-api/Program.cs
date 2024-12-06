@@ -4,14 +4,11 @@ using Microsoft.Extensions.Hosting;
 using DrawingApi.Services;
 using System.Net.WebSockets;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.AddSingleton<WebSocketService1>();
-builder.Services.AddSingleton<WebSocketService2>();
-
+builder.Services.AddSingleton<WebSocketService>();  // Ensure WebSocketService is registered.
 
 var app = builder.Build();
 
@@ -23,7 +20,6 @@ app.MapControllers();
 // Enable WebSocket support
 app.UseWebSockets();
 
-
 app.Use(async (context, next) =>
 {
     if (context.WebSockets.IsWebSocketRequest)
@@ -31,31 +27,28 @@ app.Use(async (context, next) =>
         var webSocket = await context.WebSockets.AcceptWebSocketAsync();
 
         Console.WriteLine($"WebSocket request path: {context.Request.Path}");
+        Console.WriteLine("Routing to WebSocketService");
 
-        if (context.Request.Path == "/service1")
-        {
-            Console.WriteLine("Routing to WebSocketService1");
-            var webSocketService1 = app.Services.GetRequiredService<WebSocketService1>();
-            await webSocketService1.HandleWebSocketAsync(webSocket, context.RequestAborted);
-        }
-        else if (context.Request.Path == "/service2")
-        {
-            Console.WriteLine("Routing to WebSocketService2");
-            var webSocketService2 = app.Services.GetRequiredService<WebSocketService2>();
-            await webSocketService2.HandleWebSocketAsync(webSocket, context.RequestAborted);
-        }
-        else
-        {
-            Console.WriteLine("Unknown WebSocket request path.");
-            await webSocket.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Invalid WebSocket path", context.RequestAborted);
-        }
+        // Get the WebSocket service and handle the WebSocket request
+        var webSocketService = app.Services.GetRequiredService<WebSocketService>();
+        await webSocketService.HandleWebSocketAsync(webSocket, context.RequestAborted);
     }
     else
     {
-        await next();
+        // Handle the case where the path isn't a WebSocket request
+        Console.WriteLine("Unknown WebSocket request path.");
+
+        // Send a bad request response (set status code to 400)
+        context.Response.StatusCode = 400;
+        await context.Response.WriteAsync("Invalid WebSocket path.");
     }
+
+    // Call the next middleware in the pipeline
+    await next.Invoke();
 });
 
 
+// Map HTTP controllers (if any)
+app.MapControllers();
 
 app.Run();

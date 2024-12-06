@@ -1,7 +1,7 @@
 class DrawService {
     constructor() {
         this.socket = null;
-        this.url = 'ws://localhost:8080/draw/service1'; // WebSocket endpoint
+        this.url = 'ws://localhost:8080/draw/'; // WebSocket endpoint
         this.isManuallyClosed = false;
         this.eventListeners = {}; // Custom event listeners
     }
@@ -84,5 +84,6 @@ class DrawService {
     }
 }
 
+// Instantiate the draw service
 const drawService = new DrawService();
 export default drawService;

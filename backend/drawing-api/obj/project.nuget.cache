@@ -1,9 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "Tw8L03XJyPx+G1mVO22p9Xe/qGIgrXcCKh7Gc3q+NEqMhkRkAoWKS+HhJoKhUpuN7xuG6mxl8EaYhyw7RwpKTQ==",
+  "dgSpecHash": "kJBrjIvBsDeQQ5LGnbCSYKwA5GBuWxxCfmiT8L0l2M82xSrD2jqEmzasaR3ksGgzQrnQDxi11sImgDHDrXoIaA==",
   "success": true,
   "projectFilePath": "/home/cameron-badman/projects/Canvis-collab-webapp/backend/drawing-api/drawing-api.csproj",
   "expectedPackageFiles": [
+    "/home/cameron-badman/.nuget/packages/confluent.kafka/2.6.1/confluent.kafka.2.6.1.nupkg.sha512",
+    "/home/cameron-badman/.nuget/packages/librdkafka.redist/2.6.1/librdkafka.redist.2.6.1.nupkg.sha512",
     "/home/cameron-badman/.nuget/packages/microsoft.aspnetcore.openapi/8.0.10/microsoft.aspnetcore.openapi.8.0.10.nupkg.sha512",
     "/home/cameron-badman/.nuget/packages/microsoft.extensions.apidescription.server/6.0.5/microsoft.extensions.apidescription.server.6.0.5.nupkg.sha512",
     "/home/cameron-badman/.nuget/packages/microsoft.openapi/1.6.14/microsoft.openapi.1.6.14.nupkg.sha512",
