@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "^0.17.6",
     "@react-three/drei": "^9.114.0",
     "@react-three/fiber": "^8.17.9",
     "@svg-drawing/core": "^5.0.1-beta.0",
@@ -19,8 +20,10 @@
     "@tldraw/tldraw": "^3.5.0",
     "axios": "^1.7.7",
     "konva": "^9.3.16",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.447.0",
     "paper": "^0.12.18",
+    "process": "^0.11.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-konva": "^18.2.10",

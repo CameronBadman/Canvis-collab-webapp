@@ -1,54 +1,35 @@
-import {createElement, useLayoutEffect, useState} from 'react';
-import rough from 'roughjs/bundled/rough.esm';
 
-const generator = rough.generator();
+import React, { useState, useCallback, useEffect } from 'react';
+import { Excalidraw } from '@excalidraw/excalidraw';
+import { debounce } from 'lodash';
 
 const CanvasComponent = () => {
-    const [elements, setElements] = useState([]);
-    const [drawing, setDrawing] = useState(false);
+  const [elements, setElements] = useState([]);
+  const [appState, setAppState] = useState({});
 
-    useLayoutEffect(() => {
-        const canvas = document.getElementById("canvas");
-        const context = canvas.getContext("2d");
-        //context.clearRect(0, 0, canvas.width, canvas.height())
+  // Memoize the debounced function
+  const handleChange = useCallback(
+    debounce((newElements, newAppState, _files) => {
+      setElements(newElements);
+      setAppState(newAppState);
+    }, 300),
+    []
+  );
 
+  // Use useEffect to log the updates when the state changes
+  useEffect(() => {
+    console.log('Updated elements:', elements);
+    console.log('Updated appState:', appState);
+  }, [elements, appState]); // This effect runs whenever elements or appState change
 
-        const roughCanvas = rough.canvas(canvas)
-        const rect = generator.rectangle(10, 10, 100, 100)
-        roughCanvas.draw(rect)
-    }, []);
-
-
-    const handleMouseDown = (event) => {
-        setDrawing(true);
-
-        const {clientX, ClientY} = event
-
-        const element = createElement(clientX, ClientY, clientX, ClientY)
-
-    };
-    const handleMouseMove = (event) => {
-        if(!drawing) {return}
-        const {clientX, clientY} = event
-        console.log(clientX, clientY)
-
-    };
-    const handleMouseUp = () => {
-        setDrawing(false);
-    };
-
-    return (
-        <div style={{ position: 'fixed', inset: 0 }}>
-            <canvas id={"canvas"}
-                    width={window.innerWidth}
-                    height={window.innerHeight}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-
-            >Canvas</canvas>
-        </div>
-    );
+  return (
+    <div style={{ width: '100%', height: '500px' }}>
+      <Excalidraw
+        initialData={{ elements, appState }}
+        onChange={handleChange}
+      />
+    </div>
+  );
 };
 
 export default CanvasComponent;
