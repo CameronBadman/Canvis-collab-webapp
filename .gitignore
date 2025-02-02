@@ -3,3 +3,15 @@ node_modules
 
 
 k8s/config-and-secrets.yaml
+
+
+# Terraform files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+!example.tfvars
+.terraformrc
+terraform.rc
