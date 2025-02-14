@@ -14,7 +14,6 @@
 ### **Backend**
 - **Databases**:
   - **Cassandra DB**: holds Users and Canvas long-term storage 
-  - **Redis**: Used for in Memory Session token storage 
   - **Redis TTL (Time-to-Live)**: Used for Canvases
 
 - **Server**:
