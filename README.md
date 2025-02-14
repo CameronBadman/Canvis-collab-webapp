@@ -13,7 +13,7 @@
 
 ### **Backend**
 - **Databases**:
-  - **Cassandra DB**: holds Users and Canvas long-term storage 
+  - **DynamoDB**: holds Users and Canvas long-term storage 
   - **Redis TTL (Time-to-Live)**: Used for Canvases
 
 - **Server**:
